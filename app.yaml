@@ -1,11 +1,5 @@
 appname: "erulb"
 entrypoints:
-    roper-host:
-        privileged: true
-        cmd: "nginx -p /erulb/server -c /erulb/conf/roper.conf"
-        ports:
-            - "80/tcp"
-        network_mode: "host"
     release-host:
         privileged: true
         cmd: "nginx -p /erulb/server -c /erulb/conf/release.conf"
@@ -14,7 +8,7 @@ entrypoints:
         network_mode: "host"
     beta-host:
         privileged: true
-        cmd: "nginx -p /erulb/server -c /erulb/conf/beta.conf"
+        cmd: "nginx -p /erulb/server -c /erulb/conf/dev.conf"
         ports:
             - "80/tcp"
         network_mode: "host"
