@@ -9,7 +9,7 @@ local key = ngx.var.host
 -- e.g. www.ricebook.net/first_path/
 if ngx.var.uri ~= '/' then
     local first_path = utils.split(ngx.var.uri, '/', 2)[2]
-    key = key..first_path..'/'
+    key = key..'/'..first_path..'/'
 end
 
 backend, _ = cache:get(key)
