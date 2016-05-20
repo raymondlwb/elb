@@ -26,6 +26,14 @@ if not backend then
         backend = utils.get_from_servernames(ngx.var.host)
         cache_key = ngx.var.host
     end
+    
+    -- 这就是真的没找到了
+    -- 那就抛错吧
+    if not backend then
+       ngx.log(ngx.ERR, "no such backend")
+       ngx.exit(ngx.HTTP_NOT_FOUND)
+    end
+
     -- 即使没有命中也加上cache好了
     -- 不然容易拖死? 不至于吧...
     -- 60s ttl

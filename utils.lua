@@ -39,10 +39,10 @@ end
 
 function _M.get_from_servernames(host)
     local value = servernames:get(host)
-    if not value then
-        ngx.log(ngx.ERR, "no such backend")
-        ngx.exit(ngx.HTTP_NOT_FOUND)
-    end
+    -- if not value then
+    --     ngx.log(ngx.ERR, "no such backend")
+    --     ngx.exit(ngx.HTTP_NOT_FOUND)
+    -- end
     return value
 end
 
