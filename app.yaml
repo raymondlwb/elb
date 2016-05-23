@@ -12,5 +12,11 @@ entrypoints:
         ports:
             - "80/tcp"
         network_mode: "host"
+    xff-host:
+        privileged: true
+        cmd: "nginx -p /erulb/server -c /erulb/conf/xff.conf"
+        ports:
+            - "80/tcp"
+        network_mode: "host"
 build:
     - "mkdir -p /erulb/server/logs"
