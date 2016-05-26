@@ -3,29 +3,48 @@ local _M = {}
 local analysis = ngx.shared.analysis
 local servernames = ngx.shared.servernames
 
-function _M.split(str, sSeparator, nMax, bRegexp)
-    assert(sSeparator ~= '')
-    assert(nMax == nil or nMax >= 1)
+function _M.split(str, separator, max, regex)
+    assert(separator ~= '')
+    assert(max == nil or max >= 1)
 
-    local aRecord = {}
+    local record = {}
 
     if str:len() > 0 then
-        local bPlain = not bRegexp
-        nMax = nMax or -1
+        local plain = not regex
+        max = max or -1
 
-        local nField=1 nStart=1
-        local nFirst,nLast = str:find(sSeparator, nStart, bPlain)
-        while nFirst and nMax ~= 0 do
-            aRecord[nField] = str:sub(nStart, nFirst-1)
-            nField = nField+1
-            nStart = nLast+1
-            nFirst,nLast = str:find(sSeparator, nStart, bPlain)
-            nMax = nMax-1
+        local field=1 start=1
+        local first, last = str:find(separator, start, plain)
+        while first and max ~= 0 do
+            record[field] = str:sub(start, first - 1)
+            field = field + 1
+            start = last + 1
+            first, last = str:find(separator, start, plain)
+            max = max - 1
         end
-        aRecord[nField] = str:sub(nStart)
+        record[field] = str:sub(start)
     end
 
-    return aRecord
+    return record
+end
+
+-- 拿第一级path
+function _M.get_first_path(uri)
+    local first_path = '/'
+    if uri ~= '/' then
+        first_path = _M.split(uri, '/', 2)[2]
+    end
+    return first_path
+end
+
+-- 用host和uri拼成filter key
+-- 可以直接从对应的shared里取filter rule
+function _M.make_filter_key(host, uri)
+    local first_path = _M.get_first_path(uri)
+    if first_path ~= '/' then
+        return host .. '/' .. first_path
+    end
+    return host .. first_path
 end
 
 function _M.read_data()
@@ -38,12 +57,7 @@ function _M.read_data()
 end
 
 function _M.get_from_servernames(host)
-    local value = servernames:get(host)
-    -- if not value then
-    --     ngx.log(ngx.ERR, "no such backend")
-    --     ngx.exit(ngx.HTTP_NOT_FOUND)
-    -- end
-    return value
+    return servernames:get(host)
 end
 
 function _M.check_if_analysis(host)

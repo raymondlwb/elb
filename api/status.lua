@@ -1,4 +1,4 @@
-local redis = require "redtool"
+local redis = require "lib.redtool"
 local utils = require "utils"
 
 if not ngx.var.arg_host then

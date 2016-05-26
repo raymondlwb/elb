@@ -1,4 +1,18 @@
 local utils = require "utils"
+local limit = require 'lib.filter.limit'
+
+-- check limits first
+-- check request limit
+local delay = limit.check_req_limit(ngx.var.host, ngx.var.uri)
+if not delay then
+    ngx.exit(ngx.HTTP_TOO_MANY_REQUESTS)
+elseif delay > 0 then
+    ngx.sleep(delay)
+end
+
+-- TODO check user agent
+-- TODO check referrer
+-- TODO check ip blacklist
 
 -- 默认还是用host
 -- e.g. www.ricebook.net

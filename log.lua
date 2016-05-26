@@ -1,5 +1,5 @@
 local utils = require "utils"
-local redis = require "redtool"
+local redis = require "lib.redtool"
 local config = require "config"
 local upstream = require "ngx.upstream"
 
