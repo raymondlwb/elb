@@ -4,14 +4,25 @@ import redis
 
 r = redis.Redis()
 r.delete('ELB:filter')
+r.delete('ELB:data')
 
 
 # fillup domains
 domains = {
-    'a.muroq.com': 'app1:pod1:entry1',
-    'b.muroq.com': 'app2:pod2:entry2',
+    'a.muroq.com': 'app1_pod1_entry1',
+    'a.muroq.com/4/': 'app1_pod1_entry1_xxx',
+    'b.muroq.com': 'app2_pod2_entry2',
 }
-r.set('ELB:domainmap', json.dumps(domains))
+upstream = {
+    'app1_pod1_entry1': 'server 10.100.0.18:5000;',
+    'app2_pod2_entry2': 'server 10.10.1.1:5000; server 10.10.1.2:5000;',
+    'app1_pod1_entry1_xxx': 'server 10.6.9.203:8180;',
+}
+
+for domain, key in domains.iteritems():
+    r.hset('ELB:domainmap', domain, key)
+for key, up in upstream.iteritems():
+    r.hset('ELB:upstream', key, up)
 
 # fillup limits
 reqlimits = {

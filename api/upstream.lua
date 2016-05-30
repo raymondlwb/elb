@@ -1,4 +1,5 @@
 local utils = require "utils"
+local router = require 'lib.router'
 local dyups = require "ngx.dyups"
 
 local function update()
@@ -13,6 +14,7 @@ local function update()
         ngx.log(ngx.ERR, err)
         ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
     end
+    router.add_upstream(backend, servers)
     ngx.say(cjson.encode({msg = 'ok'}))
     ngx.exit(ngx.HTTP_OK)
 end
@@ -28,6 +30,7 @@ local function delete()
         ngx.log(ngx.ERR, err)
         ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
     end
+    router.delete_upstream(backend)
     ngx.say(cjson.encode({msg = 'ok'}))
     ngx.exit(ngx.HTTP_OK)
 end

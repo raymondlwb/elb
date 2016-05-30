@@ -1,6 +1,10 @@
 local redis = require 'lib.redtool'
+local router = require 'lib.router'
 local config = require 'config'
 local lock = require 'resty.lock'
+
+local ngx_share = ngx.shared
+local dyups = require 'ngx.dyups'
 
 
 function init_limit_filter()
@@ -49,5 +53,36 @@ function init_limit_filter()
 end
 
 
+function init_router()
+    local servernames = ngx_share['servernames']
+    if not servernames then
+        ngx.log(ngx.ERR, 'ngx.shared.servernames not found')
+        return
+    end
+
+    -- lock, ensure only one worker does this
+    local mutex = lock:new('locks', {timeout = 0})
+    local es, err = mutex:lock('init_router')
+    if not es then
+        ngx.log(ngx.NOTICE, 'init_router() called in another worker')
+        return
+    end
+
+    local domains = router.get_domain()
+    for domain, backend_key in pairs(domains) do
+        servernames:add(domain, backend_key)
+    end
+
+    local upstreams = router.get_upstream()
+    for backend_key, upstream in pairs(upstreams) do
+        dyups.update(backend_key, upstream)
+    end
+
+    mutex:unlock()
+    ngx.log(ngx.NOTICE, 'all routes loaded')
+end
+
+
 -- can only use worker because cosocket is disabled
 ngx.timer.at(0, init_limit_filter)
+ngx.timer.at(0, init_router)

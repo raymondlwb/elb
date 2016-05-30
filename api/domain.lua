@@ -1,9 +1,12 @@
 local utils = require "utils"
+local router = require 'lib.router'
 local servernames = ngx.shared.servernames
 
 local function add()
     local data = utils.read_data()
-    local succ, err, _ = servernames:add(data["name"], data["backend"])
+    local domain = data['name']
+    local backend = data['backend']
+    local succ, err, _ = servernames:add(domain, backend)
     if not succ then
         ngx.say(cjson.encode({msg = err}))
         if err ~= "exists" then
@@ -11,6 +14,7 @@ local function add()
         end
         ngx.exit(ngx.HTTP_OK)
     else
+        router.add_domain(domain, backend)
         ngx.say(cjson.encode({msg = 'ok'}))
         ngx.exit(ngx.HTTP_OK)
     end
@@ -18,7 +22,9 @@ end
 
 local function delete()
     local data = utils.read_data()
-    servernames:delete(data["name"])
+    local domain = data['name']
+    servernames:delete(domain)
+    router.delete_domain(domain)
     -- TODO check err
     -- TODO clean lrucache
     ngx.say(cjson.encode({msg = 'ok'}))
