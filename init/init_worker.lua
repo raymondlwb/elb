@@ -37,6 +37,10 @@ function init_limit_filter()
     if err or not refs then
         ngx.log(ngx.INFO, 'no referrer set')
     else
+        local ref_rules = cjson.decode(refs)
+        for uri, regex in pairs(ref_rules) do
+            refcheck:add_or_update_rule(uri, regex)
+        end
         ngx.log(ngx.NOTICE, 'referrer rules loaded')
     end
     

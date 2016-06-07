@@ -1,6 +1,13 @@
 local utils = require "utils"
 local limit = require 'lib.filter.limit'
 
+
+-- FIXME openresy 在 access 阶段如果 exit
+-- 只有 [200, 300) 之间的 status code 可以正确退出
+-- 其他 code 依然会继续执行 content 阶段的内容
+-- 所以这里的 499 和 403 可能会需要改掉
+
+
 -- check limits first
 -- check request limit
 local delay = limit.check_req_limit(ngx.var.host, ngx.var.uri)
@@ -10,14 +17,13 @@ elseif delay > 0 then
     ngx.sleep(delay)
 end
 
--- TODO check user agent
--- TODO check referrer
+
 -- TODO check ip blacklist
+
 
 -- 默认还是用host
 -- e.g. www.ricebook.net
 local key = ngx.var.host
-
 -- 如果有path就尝试第一级path
 -- 第一级path拼host上
 -- e.g. www.ricebook.net/first_path/
@@ -25,6 +31,15 @@ if ngx.var.uri ~= '/' then
     local first_path = utils.split(ngx.var.uri, '/', 2)[2]
     key = key..'/'..first_path..'/'
 end
+
+
+-- check referrer
+-- 为什么在这里检查呢, 因为要用这个 uri 啊
+ngx.log(ngx.NOTICE, ngx.var.http_referer)
+if not limit.check_referrer(key, ngx.var.http_referer) then
+    ngx.exit(ngx.HTTP_FORBIDDEN)
+end
+
 
 backend, _ = cache:get(key)
 if not backend then
@@ -53,5 +68,6 @@ if not backend then
     -- 60s ttl
     cache:set(cache_key, backend, 60)
 end
+
 
 ngx.var.backend = backend

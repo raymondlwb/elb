@@ -3,9 +3,8 @@ import redis
 
 
 r = redis.Redis()
-r.delete('ELB:filter')
-r.delete('ELB:data')
-
+for k in r.keys('ELB:*'):
+    r.delete(k)
 
 # fillup domains
 domains = {
@@ -31,12 +30,13 @@ reqlimits = {
     'b.muroq.com/x': 1000,
     'b.muroq.com/y': 500,
 }
+refchecks = {
+    'a.muroq.com': 'test',
+    'a.muroq.com/4/': '^[%d]+$',
+}
 r.hset('ELB:filter', 'limit', json.dumps(reqlimits))
+r.hset('ELB:filter', 'referrer', json.dumps(refchecks))
 
 # fillup ua
 ua = ['chrome', 'safari']
 r.hset('ELB:filter', 'ua', json.dumps(ua))
-
-# fillup referrer
-refs = ['a.muroq.com', 'c.muroq.com']
-r.hset('ELB:filter', 'referrer', json.dumps(refs))

@@ -1,4 +1,3 @@
-local req = require 'lib.filter.req'
 local utils = require 'utils'
 
 local _M = {}
@@ -25,8 +24,8 @@ function _M.check_user_agent(user_agent)
     return true
 end
 
-function _M.check_referrer(ref)
-    return true
+function _M.check_referrer(uri, ref)
+    return refcheck:check(uri, ref)
 end
 
 function _M.check_ip_blacklist(ip)
