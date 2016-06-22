@@ -2,3 +2,4 @@ server
 test.lua
 *_temp/*
 logs
+dump.rdb
