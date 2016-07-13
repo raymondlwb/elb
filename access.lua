@@ -24,12 +24,19 @@ end
 -- 默认还是用host
 -- e.g. www.ricebook.net
 local key = ngx.var.host
+local second_path = '/'
 -- 如果有path就尝试第一级path
 -- 第一级path拼host上
--- e.g. www.ricebook.net/first_path/
+-- e.g. www.ricebook.net/first_path
+
 if ngx.var.uri ~= '/' then
-    local first_path = utils.split(ngx.var.uri, '/', 2)[2]
-    key = key..'/'..first_path..'/'
+    local path = utils.split(ngx.var.uri, '/', 2)
+    local first_path = path[2]
+    key = key..'/'..first_path
+    local sp = path[3]
+    if sp then
+        second_path =  second_path .. path[3]
+    end
 end
 
 
@@ -49,24 +56,36 @@ if not backend then
     local cache_key = key
     backend = utils.get_from_servernames(key)
 
+    -- 如果取到了后端，就改写uri
+    -- 比如
+    -- www.ricebook.com/firstpath/secondpath?q=XXOO
+    -- uri 应该变成 /secondpath
+    if backend then
+        ngx.req.set_uri(second_path)
+    end
+
     -- 还是没有就用默认的host去取
     -- cache key变成默认的host
     if not backend then
         backend = utils.get_from_servernames(ngx.var.host)
         cache_key = ngx.var.host
     end
-    
+
     -- 这就是真的没找到了
     -- 那就抛错吧
     if not backend then
-       ngx.log(ngx.ERR, "no such backend")
-       ngx.exit(ngx.HTTP_NOT_FOUND)
+        ngx.log(ngx.ERR, "no such backend")
+        ngx.exit(ngx.HTTP_NOT_FOUND)
     end
 
     -- 即使没有命中也加上cache好了
     -- 不然容易拖死? 不至于吧...
     -- 60s ttl
     cache:set(cache_key, backend, 60)
+else
+    if second_path then
+        ngx.req.set_uri(second_path)
+    end
 end
 
 
