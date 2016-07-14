@@ -1,7 +1,5 @@
 local utils = require "utils"
 local redis = require "lib.redtool"
-local config = require "config"
-local upstream = require "ngx.upstream"
 
 if ngx.var.backend == "" then
     ngx.log(ngx.ERR, "invalid domain: ", ngx.var.host)
