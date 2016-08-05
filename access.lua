@@ -58,7 +58,7 @@ if ngx.var.host == 'enjoy.ricebook.com' then
             ngx.exit(ngx.HTTP_BAD_GATEWAY)
         end
         if ua_match ~= nil then
-            backend = 'yggse_nova_web'
+            backend = 'ysgge_nova_release'
         else
             backend = 'eggsy_nova_web'
         end
