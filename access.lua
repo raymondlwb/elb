@@ -41,7 +41,7 @@ if ngx.var.uri ~= '/' then
     end
 end
 
-if ngx.var.host == 'enjoy.ricebook.com' then
+if ngx.var.host == 'enjoy.ricebook.com' or ngx.var.host ==  'enjoytest.ricebook.com' then
     domain_flag = false
     local fp, err = ngx.re.match(first_path, '(exhibit|order|trace|user|api|manger)')
     if err ~= nil then
@@ -58,7 +58,11 @@ if ngx.var.host == 'enjoy.ricebook.com' then
             ngx.exit(ngx.HTTP_BAD_GATEWAY)
         end
         if ua_match ~= nil then
-            backend = 'ysgge_nova_release'
+            if ngx.var.host == 'enjoy.ricebook.com' then
+                backend = 'ysgge_nova_release'
+            elseif ngx.var.host == 'enjoytest.ricebook.com' then
+                backend = 'ysgge_intra_pre'
+            end
         else
             backend = 'eggsy_nova_web'
         end
