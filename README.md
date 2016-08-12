@@ -28,67 +28,84 @@ Proxy: 8100 requests / sec (by 8 core config)
 3. Copy and modify conf/dev.conf as you wish.
 4. Start and enjoy.
 
-We will offer dockerfile ASAP.
+## Rules
+* How to define a rule
 
-## API
+设计新的ELB的时候，考虑了以下的需求：
 
-* Add servername.
+1. 同一个域名，不同的path对应不同的app；
+2. 根据ua等request的条件，将流量打到版本不同的容器中；
+3. 通过简单规则的组合创建更复杂的规则；
 
+TBC
+
+* an example of rules (python)
 ```
-http PUT :8080/domain backend=aaa name=vbox
+rule = {
+        'default': 'default',
+        'rules_name' : ['rule0', 'rule1'],
+        'backends' : ['default', 'backend0', 'backend1'],
+        'init_rule': 'rule0',
+        'rules': {
+            'rule0': {
+                'type': 'path',
+                'conditions': [
+                    {'condition':'test', 'backend':'backend0'},
+                    {'condition':'prometheus', 'backend':'backend1'},
+                    {'condition':'(rule)', 'backend':'rule1'}
+                ]
+            },
+            'rule1': {
+                'type': 'ua',
+                'conditions': [
+                    {'condition':'(iPhone)', 'backend':'backend0'},
+                    {'condition':'(Android|Winodws)', 'backend':'backend1'}
+                ]
+            }
+        }
+    }
+```
+* rules api
+```
+/__eru__/rule
+PUT     :   增加规则
+DELETE  :   删除规则
+GET     :   查询规则
+```
+* api example (python)
+```
+import requests
+import json
+
+query = 'http://elb_host/__erulb__/rule
+
+# add rule
+data = {
+        'rule': rule, # defined above
+        'domain': 'www.dante.org'
+}
+res = requests.put(query, data=json.dumps(data)) # if ok, res.content == {'msg':'ok'}
+
+# query rule
+res = requests.get(query) # if ok, res.content will be a json contain all rules.
+
+# delete rule
+domain = 'www.dante.org'
+res = requests.delete(domain)  # if ok, res.content == {'msg':'ok'}
 ```
 
-* Delete servername.
-
+## other API
+* domain api
 ```
-http DELETE :8080/domain name=vbox
+/__eru__/domain
+GET : 取得ELB所有domain
 ```
+备注: 和以前的设计不一样，现在`domain`跟`backend`的对应关系是由`rules`决定，而且`domain`会对应多个`backend`，所以只保留一个查询接口方便看ELB上管理了哪些`domain`.
 
-* Add/Update a backend. if it not exists, the module will create it automatically.
-
+* upstream api
 ```
-http PUT :8080/upstreams backend=aaa servers:='["server 127.0.0.1:5000 weight=2;", "server 127.0.0.1:4000;"]'
-```
-
-* Delete a backend.
-
-```
-http DELETE :8080/upstreams backend=aaa
-```
-
-* Show backends detail.
-
-```
-http :8080/upstreams
-```
-
-* Show upstream response detail by domain.
-
-```
-http :8080/backend/status?host=domain
-```
-
-* Show servernames list.
-
-```
-http :8080/domain
-
-```
-
-* Add analysis hosts.
-
-```
-http PUT :8080/analysis hosts:='["domain1", "domain2"]'
-```
-
-* Delete analysis host
-
-```
-http DELETE :8080/analysis host=domain
-```
-
-* Get analysis hosts
-
-```
-http :8080/analysis
+/__eru__/upstream
+GET : 取得ELB上所有的upstream
+DELETE : 删除某一组upstream
+PUT : 增加upstream
 ```
