@@ -43,7 +43,7 @@ end
 
 if ngx.var.host == 'enjoy.ricebook.com' or ngx.var.host ==  'enjoytest.ricebook.com' then
     domain_flag = false
-    local fp, err = ngx.re.match(first_path, '(exhibit|order|trace|user|api|manger|invite|topic)')
+    local fp, err = ngx.re.match(first_path, '(exhibit|order|trace|user|api|manger|invite|topic|coupon|pay|apple-app-site-association|app)')
     if err ~= nil then
         ngx.log(ngx.ERR, err)
         ngx.exit(ngx.HTTP_BAD_GATEWAY)
