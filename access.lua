@@ -25,47 +25,18 @@ end
 -- e.g. www.ricebook.net
 local key = ngx.var.host
 local second_path = '/'
-local first_path = ''
-local domain_flag = true
+
 -- 如果有path就尝试第一级path
 -- 第一级path拼host上
 -- e.g. www.ricebook.net/first_path
 
 if ngx.var.uri ~= '/' then
     local path = utils.split(ngx.var.uri, '/', 2)
-    first_path = path[2]
+    local first_path = path[2]
     key = key..'/'..first_path
     local sp = path[3]
     if sp then
         second_path =  second_path .. path[3]
-    end
-end
-
-if ngx.var.host == 'enjoy.ricebook.com' or ngx.var.host ==  'enjoytest.ricebook.com' then
-    domain_flag = false
-    local fp, err = ngx.re.match(first_path, '(exhibit|order|trace|user|api|manger|invite|topic|coupon|pay|apple-app-site-association|app)')
-    if err ~= nil then
-        ngx.log(ngx.ERR, err)
-        ngx.exit(ngx.HTTP_BAD_GATEWAY)
-    end
-    if fp ~= nil then
-        backend = 'eggsy_nova_web'
-    else
-        local ua = ngx.var.http_user_agent
-        local ua_match, err = ngx.re.match(ua, '(iPhone|Android|BlackBerry|Mobi)')
-        if err ~= nil then
-            ngx.log(ngx.ERR, err)
-            ngx.exit(ngx.HTTP_BAD_GATEWAY)
-        end
-        if ua_match ~= nil then
-            if ngx.var.host == 'enjoy.ricebook.com' then
-                backend = 'ysgge_nova_release'
-            elseif ngx.var.host == 'enjoytest.ricebook.com' then
-                backend = 'ysgge_intra_pre'
-            end
-        else
-            backend = 'eggsy_nova_web'
-        end
     end
 end
 
@@ -76,9 +47,7 @@ if not limit.check_referrer(key, ngx.var.http_referer) then
     ngx.exit(ngx.HTTP_FORBIDDEN)
 end
 
-if not backend then
-   backend, _ = cache:get(key)
-end
+backend, _ = cache:get(key)
 if not backend then
     -- 尝试用带path的去取
     -- cache key也带path
@@ -113,7 +82,7 @@ if not backend then
     -- 60s ttl
     cache:set(cache_key, backend, 60)
 else
-    if second_path and domain_flag then
+    if second_path then
         ngx.req.set_uri(second_path)
     end
 end
