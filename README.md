@@ -65,44 +65,48 @@ rule = {
         }
     }
 ```
+
 * rules api
+
 ```
 /__eru__/rule
 PUT     :   增加规则
 DELETE  :   删除规则
 GET     :   查询规则
 ```
+
 * api example (python)
+
 ```
 import requests
 import json
 
 query = 'http://elb_host/__erulb__/rule
 
-# add rule
 data = {
         'rule': rule, # defined above
         'domain': 'www.dante.org'
 }
 res = requests.put(query, data=json.dumps(data)) # if ok, res.content == {'msg':'ok'}
 
-# query rule
 res = requests.get(query) # if ok, res.content will be a json contain all rules.
 
-# delete rule
 domain = 'www.dante.org'
 res = requests.delete(domain)  # if ok, res.content == {'msg':'ok'}
 ```
 
 ## other API
 * domain api
+
 ```
 /__eru__/domain
 GET : 取得ELB所有domain
 ```
+
 备注: 和以前的设计不一样，现在`domain`跟`backend`的对应关系是由`rules`决定，而且`domain`会对应多个`backend`，所以只保留一个查询接口方便看ELB上管理了哪些`domain`.
 
 * upstream api
+
 ```
 /__eru__/upstream
 GET : 取得ELB上所有的upstream
