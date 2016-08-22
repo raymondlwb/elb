@@ -1,5 +1,6 @@
 local _M = {}
 
+local cjson = require 'cjson'
 local analysis = ngx.shared.analysis
 local servernames = ngx.shared.servernames
 
@@ -66,6 +67,11 @@ function _M.check_if_analysis(host)
         return false
     end
     return true
+end
+
+function _M.say_msg_and_exit(status, message)
+    ngx.say(cjson.encode({msg = message}))
+    ngx.exit(ngx.status)
 end
 
 return _M

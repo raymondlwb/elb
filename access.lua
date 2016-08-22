@@ -1,6 +1,8 @@
-local utils = require "utils"
+local utils = require 'utils'
 local limit = require 'lib.filter.limit'
-
+local config = require 'config'
+local ruleprocess = require 'lib.rule'
+local rules = ngx.shared.rules
 
 -- FIXME openresy 在 access 阶段如果 exit
 -- 只有 [200, 300) 之间的 status code 可以正确退出
@@ -17,74 +19,21 @@ elseif delay > 0 then
     ngx.sleep(delay)
 end
 
-
--- TODO check ip blacklist
-
-
--- 默认还是用host
--- e.g. www.ricebook.net
-local key = ngx.var.host
-local second_path = '/'
-
--- 如果有path就尝试第一级path
--- 第一级path拼host上
--- e.g. www.ricebook.net/first_path
-
-if ngx.var.uri ~= '/' then
-    local path = utils.split(ngx.var.uri, '/', 2)
-    local first_path = path[2]
-    key = key..'/'..first_path
-    local sp = path[3]
-    if sp then
-        second_path =  second_path .. path[3]
-    end
+-- rule就保存在shared.rules里面
+-- 理论上来说redis里面有shared.rules里面也该有
+-- 如果shared.rules没有而redis有，那就是出错了
+-- 所以就不查redis了
+local key = config.NAME .. ':' .. ngx.var.host
+local rule = rules:get(key)
+if rule == nil then
+    ngx.log(ngx.ERR, 'Cannot get rule for ' .. key)
+    ngx.exit(ngx.HTTP_NOT_FOUND)
 end
 
--- check referrer
--- 为什么在这里检查呢, 因为要用这个 uri 啊
-ngx.log(ngx.NOTICE, ngx.var.http_referer)
-if not limit.check_referrer(key, ngx.var.http_referer) then
-    ngx.exit(ngx.HTTP_FORBIDDEN)
-end
-
-backend, _ = cache:get(key)
-if not backend then
-    -- 尝试用带path的去取
-    -- cache key也带path
-    -- 或者这里没有就还是原来的host
-    local cache_key = key
-    backend = utils.get_from_servernames(key)
-
-    -- 如果取到了后端，就改写uri
-    -- 比如
-    -- www.ricebook.com/firstpath/secondpath?q=XXOO
-    -- uri 应该变成 /secondpath
-    if backend then
-        ngx.req.set_uri(second_path)
-    end
-
-    -- 还是没有就用默认的host去取
-    -- cache key变成默认的host
-    if not backend then
-        backend = utils.get_from_servernames(ngx.var.host)
-        cache_key = ngx.var.host
-    end
-
-    -- 这就是真的没找到了
-    -- 那就抛错吧
-    if not backend then
-        ngx.log(ngx.ERR, "no such backend")
-        ngx.exit(ngx.HTTP_NOT_FOUND)
-    end
-
-    -- 即使没有命中也加上cache好了
-    -- 不然容易拖死? 不至于吧...
-    -- 60s ttl
-    cache:set(cache_key, backend, 60)
-else
-    if second_path then
-        ngx.req.set_uri(second_path)
-    end
+backend = ruleprocess.process(rule)
+if backend == nil then
+    ngx.log(ngx.ERR, 'Cannot get backend for ' .. key)
+    ngx.exit(ngx.HTTP_NOT_FOUND)
 end
 
 ngx.var.backend = backend

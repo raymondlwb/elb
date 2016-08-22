@@ -2,6 +2,7 @@ local redis = require 'lib.redtool'
 local router = require 'lib.router'
 local config = require 'config'
 local lock = require 'resty.lock'
+local ruleprocess = require 'lib.rule'
 
 local ngx_share = ngx.shared
 local dyups = require 'ngx.dyups'
@@ -19,7 +20,7 @@ function init_limit_filter()
     local rds = redis:new()
     local redis_key = config.NAME .. ':filter'
     local domain_map_key = config.NAME .. ':domainmap'
-    
+
     -- load limit rule
     local limits, err = rds:hget(redis_key, 'limit')
     if err or not limits then
@@ -31,7 +32,7 @@ function init_limit_filter()
         end
         ngx.log(ngx.NOTICE, 'limit rules loaded')
     end
-    
+
     -- load referrer rule
     local refs, err = rds:hget(redis_key, 'referrer')
     if err or not refs then
@@ -43,7 +44,7 @@ function init_limit_filter()
         end
         ngx.log(ngx.NOTICE, 'referrer rules loaded')
     end
-    
+
     -- load user agent rule
     local uas, err = rds:hget(redis_key, 'ua')
     if err or not uas then
@@ -52,18 +53,12 @@ function init_limit_filter()
         ngx.log(ngx.NOTICE, 'user agent rules loaded')
     end
 
-    mutex:unlock()
+    -- mutex:unlock()
     ngx.log(ngx.NOTICE, 'all limits loaded')
 end
 
 
 function init_router()
-    local servernames = ngx_share['servernames']
-    if not servernames then
-        ngx.log(ngx.ERR, 'ngx.shared.servernames not found')
-        return
-    end
-
     -- lock, ensure only one worker does this
     local mutex = lock:new('locks', {timeout = 0})
     local es, err = mutex:lock('init_router')
@@ -72,17 +67,14 @@ function init_router()
         return
     end
 
-    local domains = router.get_domain()
-    for domain, backend_key in pairs(domains) do
-        servernames:add(domain, backend_key)
-    end
+    ruleprocess.load_rules()
 
     local upstreams = router.get_upstream()
     for backend_key, upstream in pairs(upstreams) do
         dyups.update(backend_key, upstream)
     end
 
-    mutex:unlock()
+    -- mutex:unlock()
     ngx.log(ngx.NOTICE, 'all routes loaded')
 end
 
