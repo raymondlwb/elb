@@ -38,7 +38,7 @@ end
 
 local function delete()
     local data = utils.read_data()
-    local domain = data['domain']
+    local domain = data
     local rds = redis:new()
     local key = name .. ':' .. domain
     local mutex = lock:new('locks', {timeout=0})
@@ -57,10 +57,13 @@ local function delete()
 end
 
 local function detail()
-    res = {}
+    local res = {}
     local rule_records = rules:get_keys(0)
     for _, key in ipairs(rule_records) do
-        res[key] = rules:get(key)
+        local tmp = rules:get(key)
+        if tmp then
+            res[key] = cjson.decode(tmp)
+        end
     end
     ngx.say(cjson.encode(res))
     ngx.exit(ngx.HTTP_OK)
