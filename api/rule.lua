@@ -38,7 +38,7 @@ end
 
 local function delete()
     local data = utils.read_data()
-    local domain = data
+    local domain = data['domain']
     local rds = redis:new()
     local key = name .. ':' .. domain
     local mutex = lock:new('locks', {timeout=0})
