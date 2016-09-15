@@ -53,7 +53,7 @@ function init_limit_filter()
         ngx.log(ngx.NOTICE, 'user agent rules loaded')
     end
 
-    -- mutex:unlock()
+    mutex:unlock()
     ngx.log(ngx.NOTICE, 'all limits loaded')
 end
 
@@ -74,7 +74,7 @@ function init_router()
         dyups.update(backend_key, upstream)
     end
 
-    -- mutex:unlock()
+    mutex:unlock()
     ngx.log(ngx.NOTICE, 'all routes loaded')
 end
 

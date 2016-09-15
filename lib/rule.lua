@@ -60,6 +60,9 @@ function _M.load_rules()
         ngx.log(ngx.ERR, err)
         return
     end
+    if not rs then
+        return
+    end
     for i = 1, #rs, 2 do
         key = rs[i]
         rule = rds:get(rs[i])
