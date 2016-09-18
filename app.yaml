@@ -2,22 +2,22 @@ appname: "erulb3"
 entrypoints:
   release-host:
     privileged: true
-    cmd: "nginx -p /erulb/server -c /erulb/conf/release.conf"
+    cmd: "nginx -p /erulb3/server -c /erulb3/conf/release.conf"
     ports:
       - "80/tcp"
     network_mode: "host"
     beta-host:
       privileged: true
-      cmd: "nginx -p /erulb/server -c /erulb/conf/dev.conf"
+      cmd: "nginx -p /erulb3/server -c /erulb3/conf/dev.conf"
       ports:
         - "80/tcp"
       network_mode: "host"
     xff-host:
       privileged: true
-      cmd: "nginx -p /erulb/server -c /erulb/conf/xff.conf"
+      cmd: "nginx -p /erulb3/server -c /erulb3/conf/xff.conf"
       ports:
         - "80/tcp"
       network_mode: "host"
 build:
-  - "mkdir -p /erulb/server/logs"
+  - "mkdir -p /erulb3/server/logs"
 base: "hub.ricebook.net/base/alpine:openresty-2016.09.05"
