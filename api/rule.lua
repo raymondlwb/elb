@@ -26,21 +26,26 @@ local function update()
         ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
     end
     local succ, err, _ = rules:set(key, rule)
+    mutex:unlock()
     if not succ then
         utils.say_msg_and_exit(ngx.HTTP_OK, err)
     end
 
     local rds = redis:new()
+    rds:init_pipeline()
     rds:hset(index_key, key, domain)
     rds:set(key, rule)
+    rds:commit_pipeline()
     utils.say_msg_and_exit(ngx.HTTP_OK, 'ok')
 end
 
 local function delete()
     local data = utils.read_data()
-    local domain = data['domain']
-    local rds = redis:new()
-    local key = name .. ':' .. domain
+    local domains = data['domains']
+    if type(domains) ~= 'table' then
+        domains = {domains}
+    end
+
     local mutex = lock:new('locks', {timeout=0})
     local rlock, err = mutex:lock('delete')
     if not rlock then
@@ -50,9 +55,17 @@ local function delete()
         utils.say_msg_and_exit(ngx.HTTP_INTERNAL_SERVER_ERROR, err)
     end
 
-    rules:delete(key)
-    rds:hdel(index_key, key)
-    rds:del(key)
+    local rds = redis:new()
+    rds:init_pipeline()
+    for _, domain in ipairs(domains) do
+        local key = name .. ':' .. domain
+        rules:delete(key)
+        rds:hdel(index_key, key)
+        rds:del(key)
+    end
+    mutex:unlock()
+    rds:commit_pipeline()
+
     utils.say_msg_and_exit(ngx.HTTP_OK, 'ok')
 end
 
