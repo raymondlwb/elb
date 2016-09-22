@@ -10,9 +10,9 @@ local function update()
     end
     local servers = table.concat(data["servers"])
     local ok, err = dyups.update(backend, servers)
-    if ok ~= 200 then
+    if ok ~= ngx.HTTP_OK then
         ngx.log(ngx.ERR, err)
-        ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
+        ngx.exit(ok)
     end
     router.add_upstream(backend, servers)
     ngx.say(cjson.encode({msg = 'ok'}))
@@ -26,9 +26,9 @@ local function delete()
         ngx.exit(ngx.HTTP_BAD_REQUEST)
     end
     local ok, err = dyups.delete(backend)
-    if ok ~= 200 then
+    if ok ~= ngx.HTTP_OK then
         ngx.log(ngx.ERR, err)
-        ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)
+        ngx.exit(ok)
     end
     router.delete_upstream(backend)
     ngx.say(cjson.encode({msg = 'ok'}))
