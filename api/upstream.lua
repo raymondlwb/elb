@@ -61,4 +61,3 @@ elseif ngx.var.request_method == 'GET' then
     detail()
 end
 ngx.exit(ngx.HTTP_BAD_REQUEST)
-
