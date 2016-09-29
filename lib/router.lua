@@ -32,7 +32,7 @@ end
 
 function _M.add_upstream(backend, servers)
     local rds = redis:new()
-    rds:hset(upstream_key, key, servers)
+    rds:hset(upstream_key, backend, servers)
 end
 
 function _M.delete_upstream(backend)
