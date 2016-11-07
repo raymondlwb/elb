@@ -1,47 +1,36 @@
-local utils = require "utils"
-local redis = require "lib.redtool"
+local config = require 'config'
 
-if ngx.var.backend == "" then
-    ngx.log(ngx.ERR, "invalid domain: ", ngx.var.host)
-    return
+local cost = 0
+for token in string.gmatch(ngx.var.upstream_response_time, '[^,]+') do
+    local time = tonumber(token)
+    if time then
+        cost = cost + time
+    end
 end
 
 local host = ngx.var.host
-local status = tonumber(ngx.var.upstream_status)
-local cost = tonumber(ngx.var.upstream_response_time)
+-- statsd
+local statsd_host = string.gsub(host, '%.', '_')
+local statsd_status = string.format(config.STATSD_FORMAT, statsd_host, 'status')
+local statsd_cost = string.format(config.STATSD_FORMAT, statsd_host, 'cost')
+local statsd_total = string.format(config.STATSD_FORMAT, statsd_host, 'total')
 
-local function calc_status(premature)
-    if not utils.check_if_analysis(host) then
-        return
-    end
-    local rds = redis:new()
-    local status_key = "erulb:"..host..":status"
-    local cost_key = "erulb:"..host..":cost"
-    local total_key = "erulb:"..host..":count"
-    local miss_key = "erulb:"..host..":miss"
-    local hit_key = "erulb:"..host..":hit"
-    local wrong_key = "erulb:"..host..":wrong"
-    local right_key = "erulb:"..host..":right"
-
-    rds:incr(total_key)
-    if not status then
-        rds:incr(miss_key)
-        ngx.log(ngx.ERR, host, ' ', status, ' ', cost)
-        return
-    end
-
-    rds:incr(hit_key)
-    rds:hincrby(status_key, status, 1)
-    if tonumber(status) > 499 then
-        rds:incr(wrong_key)
-    else
-        rds:incr(right_key)
-    end
-    rds:incrbyfloat(cost_key, cost)
+statsd.count(statsd_total, 1)
+statsd.count(statsd_status..'.'..ngx.var.upstream_status, 1)
+if cost then
+    statsd.time(statsd_cost, cost*1000) -- 毫秒
 end
 
-local ok, err = ngx.timer.at(0, calc_status)
+local function statsd_flush(premature)
+    statsd.flush(ngx.socket.udp, config.STATSD, config.STATSD_PORT)
+end
+
+local ok, err = ngx.timer.at(0, statsd_flush)
 if not ok then
-    ngx.log(ngx.ERR, "failed to create timer: ", err)
+    ngx.log(ngx.ERR, 'failed to create timer: ', err)
+end
+
+if ngx.var.backend == '' then
+    ngx.log(ngx.ERR, 'invalid domain: ', ngx.var.host)
     return
 end
