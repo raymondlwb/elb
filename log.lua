@@ -22,7 +22,7 @@ if cost then
 end
 
 local function statsd_flush(premature)
-    statsd.flush(ngx.socket.udp, config.STATSD, config.STATSD_PORT)
+    statsd.flush(ngx.socket.udp, config.STATSD_HOST, config.STATSD_PORT)
 end
 
 local ok, err = ngx.timer.at(0, statsd_flush)
