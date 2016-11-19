@@ -1,6 +1,9 @@
 string = require 'string'
 local _M = {}
 
+-- TODO : 类似 path 这样的黑名单机制要怎样做啊。
+--        现在 ua 分流只能作为最后的一级 rule 啊。
+
 function _M.process(conditions)
     for i = 1, #conditions, 1 do
         key = conditions[i]['condition']
