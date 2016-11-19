@@ -26,9 +26,7 @@ function _M.process(conditions)
             ngx.log(ngx.ERR, "white list, jump to "..conditions[i]['backend'])
             return conditions[i]['backend']
         end
-
     end
-
     return nil
 end
 
