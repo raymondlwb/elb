@@ -2,7 +2,7 @@ appname: "erulb3"
 entrypoints:
   release-host:
     privileged: true
-    cmd: "nginx -p /erulb3/server -c /erulb3/conf/release.conf"
+    cmd: "ERU_INFO=$NODE_IP nginx -p /erulb3/server -c /erulb3/conf/release.conf"
     ports:
       - "80/tcp"
     network_mode: "host"
