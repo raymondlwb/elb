@@ -2,36 +2,11 @@ local cjson = require 'cjson'
 local redis = require 'lib.redtool'
 local config = require 'config'
 local _M = {}
-local domain_key = config.DOMAIN_KEY
 local upstream_key = config.UPSTREAM_KEY
 local rule_index_key = config.NAME .. ':rules'
 local channel_key = config.CHANNEL_KEY
 
 local rules = ngx.shared.rules
-
-function _M.add_domain(domain, key)
-    local rds = redis:new()
-    rds:hset(domain_key, domain, key)
-end
-
-function _M.delete_domain(domain)
-    local rds = redis:new()
-    rds:hdel(domain_key, domain)
-end
-
-function _M.get_domain()
-    local rds = redis:new()
-    local rs, err = rds:hgetall(domain_key)
-    if err or not rs then
-        rs = {}
-    end
-
-    local r = {}
-    for i = 1, #rs, 2 do
-        r[rs[i]] = rs[i + 1]
-    end
-    return r
-end
 
 function _M.add_upstream(backend, servers)
     local rds = redis:new()

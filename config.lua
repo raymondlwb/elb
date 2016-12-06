@@ -10,7 +10,6 @@ _M.STATSD_FORMAT = 'elb3_domain_stat.%s.%s'
 
 _M.UPDATE = '1'
 _M.DELETE = '0'
-_M.DOMAIN_KEY = _M.NAME .. ':domainmap'
 _M.UPSTREAM_KEY = _M.NAME .. ':upstream'
 _M.CHANNEL_KEY = _M.NAME .. ':UPSTREAM_AND_RULE'
 return _M
