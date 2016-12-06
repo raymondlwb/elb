@@ -71,7 +71,7 @@ function _M.delete_rule(domains)
     rds:init_pipeline()
     for _, domain in ipairs(domains) do
         local key = config.NAME .. ':' .. domain
-        rds:hdel(index_key, key)
+        rds:hdel(rule_index_key, key)
         rds:del(key)
         local msg = {
             TYPE = 'RULE',
