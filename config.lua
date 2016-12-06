@@ -11,5 +11,5 @@ _M.STATSD_FORMAT = 'elb3_domain_stat.%s.%s'
 _M.UPDATE = '1'
 _M.DELETE = '0'
 _M.UPSTREAM_KEY = _M.NAME .. ':upstream'
-_M.CHANNEL_KEY = _M.NAME .. ':UPSTREAM_AND_RULE'
+_M.CHANNEL_KEY = _M.NAME .. ':upstream_and_rule'
 return _M

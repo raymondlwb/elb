@@ -4,7 +4,6 @@ local cjson = require 'cjson'
 local config = require 'config'
 local name = config.NAME
 local key = name .. ':rules'
---
 
 local result = {}
 local rds = redis:new()
