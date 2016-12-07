@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import setup
 
 
 setup(
@@ -8,8 +8,7 @@ setup(
     zip_safe=True,
     author_email='timfeirg@icloud.com',
     description='ELB 3 python client',
-    packages=find_packages(),
-    include_package_data=True,
+    py_modules=['erulbpy'],
     install_requires=[
         'requests',
         'setuptools',
