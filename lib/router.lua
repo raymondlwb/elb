@@ -10,7 +10,7 @@ local rules = ngx.shared.rules
 
 function _M.add_upstream(backend, servers)
     local rds = redis:new()
-    local _, err  =rds:hset(upstream_key, backend, servers)
+    local _, err = rds:hset(upstream_key, backend, servers)
     if err then return err end
     local msg = {
         TYPE = 'UPSTREAM',
@@ -31,7 +31,7 @@ function _M.delete_upstream(backend)
         OPER = config.DELETE,
         BACKEND = backend
     }
-    rds:publish(channel_key, cjson.encode(msg))
+    local _, err = rds:publish(channel_key, cjson.encode(msg))
     if err then return err end
 end
 
@@ -53,8 +53,8 @@ function _M.add_rule(domain, rule)
     local key = config.NAME .. ':' .. domain
     local rds = redis:new()
 
-    rds:init_pipeline()
-    rds:hset(rule_index_key, key, domain)
+    local _, err = rds:hset(rule_index_key, key, domain)
+    if err then return err end
     rds:set(key, rule)
     local msg = {
         TYPE = 'RULE',
@@ -62,8 +62,8 @@ function _M.add_rule(domain, rule)
         KEY  = key,
         RULE = rule
     }
-    rds:publish(channel_key, cjson.encode(msg))
-    rds:commit_pipeline()
+    local _, err = rds:publish(channel_key, cjson.encode(msg))
+    if err then return err end
 end
 
 function _M.delete_rule(domains)
@@ -78,9 +78,11 @@ function _M.delete_rule(domains)
             OPER = config.DELETE,
             KEY = key
         }
-        rds:publish(channel_key, cjson.encode(msg))
+        local _, err = rds:publish(channel_key, cjson.encode(msg))
+        if err then ngx.log(ngx.ERR, 'Publish err: '..err) end
     end
-    rds:commit_pipeline()
+    local _, err = rds:commit_pipeline()
+    if err then return err end
 end
 
 function _M.get_rule()
