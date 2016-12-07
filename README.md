@@ -5,6 +5,7 @@ Eru load balance
 
 1. [Openresty](http://openresty.org)
 2. [ngx_http_dyups_module](https://github.com/yzprofile/ngx_http_dyups_module)
+3. `pip install -U git+http://gitlab.ricebook.net/platform/erulb3.git#egg=erulb-py -i https://pypi.doubanio.com/simple/`
 
 ## Performance
 
