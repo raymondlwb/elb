@@ -1,29 +1,20 @@
-local redis = require 'lib.redtool'
 local router = require 'lib.router'
-local config = require 'config'
 local lock = require 'resty.lock'
-local ruleprocess = require 'lib.rule'
-
-local ngx_share = ngx.shared
-local dyups = require 'ngx.dyups'
-
 local monitor = require 'monitor'
 
 function init_router()
-    -- lock, ensure only one worker does this
     local mutex = lock:new('locks', {timeout = 0})
     local es, err = mutex:lock('init_router')
     if not es then
-        ngx.log(ngx.NOTICE, 'init_router() called in another worker')
+        ngx.log(ngx.NOTICE, ' init_router() called in another worker ')
         return
     end
-
-    ruleprocess.load_rules()
-
-    local upstreams = router.get_upstream()
-    for backend_key, upstream in pairs(upstreams) do
-        dyups.update(backend_key, upstream)
+    if err then
+        ngx.log(ngx.ERR, err)
     end
+
+    router.load_rules()
+    router.load_upstream()
 
     mutex:unlock()
     ngx.log(ngx.NOTICE, 'all routes loaded')

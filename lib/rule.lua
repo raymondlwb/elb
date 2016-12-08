@@ -2,7 +2,6 @@ local _M = {}
 
 local json = require 'cjson'
 local redis = require 'lib.redtool'
-local config = require 'config'
 local ua_processor = require 'lib.processor.ua'
 local path_processor = require 'lib.processor.path'
 local general_processor = require 'lib.processor.general'
@@ -50,26 +49,6 @@ function _M.process(rule_content)
         result = res
     end
     return result
-end
-
-function _M.load_rules()
-    local index_name = config.NAME .. ':rules'
-    local rds = redis:new()
-    local rs, err = rds:hgetall(index_name)
-    if err then
-        ngx.log(ngx.ERR, err)
-        return
-    end
-    if not rs then
-        return
-    end
-    for i = 1, #rs, 2 do
-        key = rs[i]
-        rule = rds:get(rs[i])
-        if rule then
-            rule_records:add(key, rule)
-        end
-    end
 end
 
 return _M

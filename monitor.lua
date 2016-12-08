@@ -2,6 +2,7 @@ local lock = require 'resty.lock'
 local cjson = require 'cjson'
 local config = require 'config'
 local redis = require 'lib.redtool'
+local router = require 'lib.router'
 local string = require 'string'
 local table = require 'table'
 local dyups = require 'ngx.dyups'
@@ -10,50 +11,28 @@ local utils = require 'utils'
 
 local _M = {}
 
-function upstream_refresh(data)
+function update_upstream(data)
     if data['OPER'] == config.UPDATE then
-        local ok, err = dyups.update(data['BACKEND'], data['SERVERS'])
-        if ok ~= ngx.HTTP_OK then
-            return err
-        end
+        return router.add_upstream(data['BACKEND'], data['SERVERS'])
     end
     if data['OPER'] == config.DELETE then
-        local ok, err = dyups.delete(data['BACKEND'])
-        if ok ~= ngx.HTTP_OK then
-            return err
-        end
+        return router.delete_upstream(data['BACKEND'])
     end
 end
 
-function rule_refresh(data)
-    local mutex = lock:new('rules', {timeout=0, exptime=3})
-    local rlock, err = mutex:lock('rule')
-    if not rlock then
-        ngx.log(ngx.ERR, ' rule updated in another worker ')
-    end
-    if err then
-        return err
-    end
-
+function update_rule(data)
     if data['OPER'] == config.UPDATE then
-        local succ, err, _ = rules:set(data['KEY'], data['RULE'])
-        if not succ then
-            return err
-        end
+        -- router.add_rule 里面加锁了
+        return router.add_rule(data['KEY'], data['RULE'])
     end
     if data['OPER'] == config.DELETE then
-        local succ, err, _ = rules:delete(data['KEY'])
-        if not succ then
-            return err
-        end
+        return router.delete_rule(data['KEY'])
     end
-
-    mutex:unlock()
 end
 
 local func_table = {
-    UPSTREAM = upstream_refresh,
-    RULE = rule_refresh
+    UPSTREAM = update_upstream,
+    RULE = update_rule
 }
 
 function _M.monitor()

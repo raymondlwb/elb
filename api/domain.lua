@@ -2,8 +2,7 @@ local utils = require 'utils'
 local redis = require 'lib.redtool'
 local cjson = require 'cjson'
 local config = require 'config'
-local name = config.NAME
-local key = name .. ':rules'
+local key = config.NAME .. ':rules'
 
 local result = {}
 local rds = redis:new()

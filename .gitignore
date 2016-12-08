@@ -7,3 +7,4 @@ dump.rdb
 .ropeproject
 *.egg-info/
 src
+api/develop.lua

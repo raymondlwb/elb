@@ -1,41 +1,42 @@
-local cjson = require 'cjson'
-local redis = require 'lib.redtool'
-local config = require 'config'
 local _M = {}
+local cjson = require 'cjson'
+local lock = require 'resty.lock'
+local dyups = require 'ngx.dyups'
+local upstream = require 'ngx.upstream'
+local config = require 'config'
+local redis = require 'lib.redtool'
+local rules = ngx.shared.rules
 local upstream_key = config.UPSTREAM_KEY
 local rule_index_key = config.NAME .. ':rules'
 local channel_key = config.CHANNEL_KEY
 
-local rules = ngx.shared.rules
-
 function _M.add_upstream(backend, servers)
-    local rds = redis:new()
-    local _, err = rds:hset(upstream_key, backend, servers)
-    if err then return err end
-    local msg = {
-        TYPE = 'UPSTREAM',
-        OPER = config.UPDATE,
-        BACKEND = backend,
-        SERVERS = servers
-    }
-    local _, err = rds:publish(channel_key, cjson.encode(msg))
-    if err then return err end
+    local status, err = dyups.update(backend, servers)
+    if status ~= ngx.HTTP_OK then
+        return err
+    end
 end
 
 function _M.delete_upstream(backend)
-    local rds = redis:new()
-    local _, err = rds:hdel(upstream_key, backend)
-    if err then return err end
-    local msg = {
-        TYPE = 'UPSTREAM',
-        OPER = config.DELETE,
-        BACKEND = backend
-    }
-    local _, err = rds:publish(channel_key, cjson.encode(msg))
-    if err then return err end
+    local status, err = dyups.delete(backend)
+    if status ~= ngx.HTTP_OK then
+        return err
+    end
 end
 
-function _M.get_upstream()
+function _M.get_upstreams()
+    local result = {}
+    local us = upstream.get_upstreams()
+    for _, u in ipairs(us) do
+        local srvs, err = upstream.get_servers(u)
+        if not srvs then return nil, err end
+        result[u] = srvs
+    end
+    return result, nil
+end
+
+ -- 这个函数是用来初始化的时候载入 upstream 数据的！
+function _M.load_upstream()
     local rds = redis:new()
     local rs, err = rds:hgetall(upstream_key)
     if err or not rs then
@@ -44,57 +45,73 @@ function _M.get_upstream()
 
     local r = {}
     for i = 1, #rs, 2 do
-        r[rs[i]] = rs[i + 1]
+        local status, err = dyups.update(rs[i], rs[i+1])
+        if status ~= ngx.HTTP_OK then
+            ngx.log(ngx.ERR, err)
+        end
     end
-    return r
 end
 
-function _M.add_rule(domain, rule)
-    local key = config.NAME .. ':' .. domain
-    local rds = redis:new()
+function _M.add_rule(key, rule)
+    local mutex = lock:new('rules', {timeout=0, exptime=3})
+    local rlock, err = mutex:lock('add'..key)
+    if not rlock then
+        return key..': updated in another worker '
+    end
+    if err then return err end
 
-    local _, err = rds:hset(rule_index_key, key, domain)
-    if err then return err end
-    rds:set(key, rule)
-    local msg = {
-        TYPE = 'RULE',
-        OPER = config.UPDATE,
-        KEY  = key,
-        RULE = rule
-    }
-    local _, err = rds:publish(channel_key, cjson.encode(msg))
-    if err then return err end
+    local succ, err, _ = rules:set(key, rule)
+    mutex:unlock()
+    if not succ then return err end
 end
 
-function _M.delete_rule(domains)
-    local rds = redis:new()
-    rds:init_pipeline()
-    for _, domain in ipairs(domains) do
-        local key = config.NAME .. ':' .. domain
-        rds:hdel(rule_index_key, key)
-        rds:del(key)
-        local msg = {
-            TYPE = 'RULE',
-            OPER = config.DELETE,
-            KEY = key
-        }
-        local _, err = rds:publish(channel_key, cjson.encode(msg))
-        if err then ngx.log(ngx.ERR, 'Publish err: '..err) end
+function _M.delete_rule(key)
+    local mutex = lock:new('rules', {timeout=0, exptime=3})
+    local rlock, err = mutex:lock('delete'..key)
+    if not rlock then
+        return key .. ': deleted in another worker '
     end
-    local _, err = rds:commit_pipeline()
     if err then return err end
+
+    local succ, err, _ = rules:delete(key)
+    mutex:unlock()
+    if not succ then return err end
 end
 
 function _M.get_rule()
     local res = {}
     local rule_records = rules:get_keys(0)
     for _, key in ipairs(rule_records) do
+        ngx.log(ngx.NOTICE, key)
         local tmp = rules:get(key)
         if tmp then
-            res[key] = cjson.decode(tmp)
+            --res[key] = cjson.decode(tmp)
+            res[key] = tmp
         end
     end
     return res
+end
+
+-- 启动 ELB 时从 redis 中载入数据
+function _M.load_rules()
+    local index_name = config.NAME .. ':rules'
+    local rds = redis:new()
+    local rs, err = rds:hgetall(index_name)
+    if err then
+        ngx.log(ngx.ERR, err)
+        return
+    end
+    if not rs then
+        return
+    end
+    for i = 1, #rs, 2 do
+        key = rs[i]
+        rule = rds:get(rs[i])
+        if rule then
+            local succ, err, _ = rules:set(key, rule)
+            if not succ and err ~= 'exists' then ngx.log(ngx.ERR, err) end
+        end
+    end
 end
 
 return _M
