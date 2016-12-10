@@ -30,6 +30,8 @@ class ELBClient(object):
         backend -- str, nginx upstream name
         servers -- list of str, eash is a server address
         """
+        if not servers:
+            return self.delete_upstream(backend)
         nginx_server_clause = '\n'.join(['server {};'.format(server) for server in servers])
         self.rds.hset(self._upstream_key, backend, nginx_server_clause)
         logger.debug('Set ELB %s upstream %s: %s', self.name, backend, servers)
