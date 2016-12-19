@@ -96,6 +96,7 @@ class ELBClient(object):
                 'KEY': key
             }
             pipe.hdel(self._rule_index_key, domain)
+            pipe.delete(key)
             pipe.publish(self._channel_key, json.dumps(msg))
 
         pipe.execute()
