@@ -70,7 +70,11 @@ function _M.check_if_analysis(host)
 end
 
 function _M.say_msg_and_exit(status, message)
-    ngx.say(cjson.encode({msg = message}))
+    if type(message) == 'table' then
+        ngx.say(cjson.encode(message))
+    else
+        ngx.say(cjson.encode({msg=message}))
+    end
     ngx.exit(ngx.status)
 end
 

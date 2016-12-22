@@ -1,35 +1,28 @@
 local cjson = require 'cjson'
 local utils = require 'utils'
+local lock = require 'resty.lock'
 local router = require 'lib.router'
 
-local function update()
-    local data = utils.read_data()
-    local domain = data['domain']
-    local rule = cjson.encode(data['rule'])
-    router.add_rule(domain, rule)
-    utils.say_msg_and_exit(ngx.HTTP_OK, 'ok')
-end
-
-local function delete()
-    local data = utils.read_data()
-    local domains = data['domains']
-    if type(domains) ~= 'table' then
-        domains = {domains}
+local function reload()
+    local mutex = lock:new('locks', {timeout=0, exptime=3})
+    local rlock, err = mutex:lock('reload_rule')
+    if not rlock then
+        utils.say_msg_and_exit(ngx.HTTP_OK, ' rule reload in another worker ')
     end
-    router.delete_rule(domains)
+    if err then
+        utils.say_msg_and_exit(ngx.HTTP_INTERNAL_SERVER_ERROR, err)
+    end
+    router.load_rules()
     utils.say_msg_and_exit(ngx.HTTP_OK, 'ok')
 end
 
 local function detail()
     local res = router.get_rule()
-    ngx.say(cjson.encode(res))
-    ngx.exit(ngx.HTTP_OK)
+    utils.say_msg_and_exit(ngx.HTTP_OK, res)
 end
 
 if ngx.var.request_method == 'PUT' then
-    update()
-elseif ngx.var.request_method == 'DELETE' then
-    delete()
+    reload()
 elseif ngx.var.request_method == 'GET' then
     detail()
 end
