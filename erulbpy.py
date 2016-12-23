@@ -1,10 +1,12 @@
+# -*- coding: utf-8 -*-
+
 import logging
-from redis import Redis
 import json
 
+from redis import Redis
+from ruledata import UpdateRule
 
 logger = logging.getLogger('erulbpy')
-
 
 class PubsubOperations(object):
     UPDATE = '1'
@@ -23,6 +25,7 @@ class ELBClient(object):
         self._upstream_key = '{}:upstream'.format(name)
         self._channel_key = '{}:upstream_and_rule'.format(name)
         self._rule_index_key = '{}:rules'.format(name)
+        self.redis_url = redis_url
         self.rds = Redis.from_url(redis_url)
 
     def set_upstream(self, backend, servers):
@@ -61,11 +64,13 @@ class ELBClient(object):
         rule_text = self.rds.get(key)
         return json.loads(rule_text)
 
-    def set_rule(self, domain, rule):
+    def set_rule(self, url, rule):
         """
         domain -- str
         rule -- ELB rule dict
         """
+        rule_data = UpdateRule(url, rule, self.redis_url, self.name)
+        domain, rule = rule_data.add_backend()
         key = '{}:{}'.format(self.name, domain)
         logger.debug('Set ELB %s rule %s: %s', self.name, key, rule)
         self.rds.hset(self._rule_index_key, key, domain)
@@ -89,14 +94,28 @@ class ELBClient(object):
         pipe = self.rds.pipeline()
         logger.debug('Delete ELB %s rule: %s', self.name, domains)
         for domain in domains:
+            rule_data = UpdateRule(domain, None, self.redis_url, self.name)
+            domain, rule = rule_data.del_backend()
             key = '{}:{}'.format(self.name, domain)
+            if not rule: # 对应的 rule 没有 backend 了，可以把这个域名对应的数据删去
+                msg = {
+                    'TYPE': PubsubMessageType.RULE,
+                    'OPER': PubsubOperations.DELETE,
+                    'KEY': key
+                }
+                pipe.hdel(self._rule_index_key, key)
+                pipe.delete(key)
+                pipe.publish(self._channel_key, json.dumps(msg))
+                continue
+
+            encoded_rule = json.dumps(rule)
             msg = {
                 'TYPE': PubsubMessageType.RULE,
-                'OPER': PubsubOperations.DELETE,
-                'KEY': key
+                'OPER': PubsubOperations.UPDATE,
+                'KEY': key,
+                'RULE': encoded_rule,
             }
-            pipe.hdel(self._rule_index_key, key)
-            pipe.delete(key)
+            pipe.set(key, encoded_rule)
             pipe.publish(self._channel_key, json.dumps(msg))
 
         pipe.execute()

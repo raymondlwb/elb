@@ -47,11 +47,21 @@ Proxy: 8100 requests / sec (by 8 core config)
 ```
 ### 注意双单引号, 用`json.dumps` 将 json 序列化成一个符合标准的 json 字符串才是保险的。
 rule = {
+        'type': 'complex', # erulbpy 以这个为标识，对这种规则，erulbpy 都是直接 update 的
         'default': 'backend0',  # 默认的转发后端
         'rules_name' : ['rule0', 'rule1', 'rule2'], # 所有 rule 的集合, TODO: ELB 加上一个判断 rule 是否合法的检查
         'backends' : ['backend0', 'backend1', 'backend2'], # 所有 backend 的集合，ELB用来判断一个 backend 是 rule 还是 backends
         'init_rule': 'rule0', # 初始rule, ELB 会先从这个 rule 开始检查
         'rules': {
+            'mount_point_rule': {
+                'type': 'mount',
+                'conditions': [
+                    {'condition': '/hub/home/', 'backend': 'backend0'}, # 会把 /hub/home/xxxx rewrite 到 /xxxx, 后端拿到的 path 就是 /xxxx. 注意必须以 / 开头结尾.
+                    {'condition': '/hub/fuck/', 'backend': 'backend1'}, # 会把 /hub/fuck/xxxx rewrite 到 /xxxx, 后端拿到的 path 就是 /xxxx. 注意必须以 / 开头结尾.
+                    {'condition': '/hub/test/', 'backend': 'rule1'}, # 会把 /hub/test/xxxx rewrite 到 /xxxx, 后端拿到的 path 就是 /xxxx. 注意必须以 / 开头结尾.
+                    {'condition': 'jump', 'backend': 'rule1'}, # 请求啥都不包含, 丢给下一个 (我对这个 jump 真的是有句fuck不知道该不该说...)
+                ],
+            },
             'rule0': {
                 'type': 'path',  # rule 的类型决定了后续判断的逻辑, path 会根据 uri 的第一级路径，比较字符串是否相等
                 'conditions': [
@@ -98,51 +108,317 @@ rule = {
         }
 }
 ```
-
-* rules api
-
-```
-/__eru__/rule
-PUT     :   增加规则
-DELETE  :   删除规则
-GET     :   查询规则
-```
-
-* api example (python)
+* a simple example of mount point rules (python)
 
 ```
-import requests
-import json
-
-query = 'http://elb_host/__erulb__/rule
-
-data = {
-        'rule': rule, # defined above
-        'domain': 'www.dante.org'
+rule = {
+        'default': 'ysgge___pre___intra',
+        'rules_name': ['mount_point_rule'],
+        'backends': ['ysgge___pre___intra'],
+        'init_rule': 'mount_point_rule',
+        'rules': {
+            'mount_point_rule': {
+                'type': 'mount',
+                'conditions': [
+                    {'condition': '/path/', backend: 'ysgge___pre___intra'}
+                ]
+            }
+        }
 }
-res = requests.put(query, data=json.dumps(data)) # if ok, res.content == {'msg':'ok'}
-
-res = requests.get(query) # if ok, res.content will be a json contain all rules.
-
-domain = 'www.dante.org'
-res = requests.delete(domain)  # if ok, res.content == {'msg':'ok'}
 ```
 
-## other API
-* domain api
+* 更新 elb rule 的若干中情况
 
-```
-/__eru__/domain
-GET : 取得ELB所有domain
-```
+    elb 中转发规则的数据保存在 ngx.shared.rules(shared_dict) 中，以请求的 domain 为 key. 现在有两种 rule : general 和 mount， 这两种 rule 的主要区别在于： general rule 对应一个后端，mount point rule 对应多个后端。随着业务的发展，同一个域名可能会出现多种情况：原来只是对应一个后端的域名要增加挂载点；原来已经挂载了后端的域名要增加挂载点；而按照协议，citadel 会传来一个 rule 的 json 数据。所以现在的更新策略分成了6种不同的情况。以下这些逻辑已经被封装到 erulbpy 中。
 
-备注: 和以前的设计不一样，现在`domain`跟`backend`的对应关系是由`rules`决定，而且`domain`会对应多个`backend`，所以只保留一个查询接口方便看ELB上管理了哪些`domain`.
+1. 域名不存在，需要增加一个 general rule, 可以直接更新;
 
-* upstream api
+2. 域名不存在，需要增加一个 mount point rule;
+    ```
+    # citadel post 的数据
+    domain = 'www.elb3test.org/home'
+    rule = {
+        'default': 'home___pre___intra',
+        'rules_name': ['rule0'],
+        'backends':['home___pre___intra'],
+        'init_rule': 'rule0'
+        'rules': {
+            'rule0': {
+                'type': 'general',
+                'conditions': [
+                    {'backend': 'home___pre___intra'}
+                ]
+            }
+        }
+    }
+    # erulbpy 处理之后的数据
+    domain = 'www.elb3test.org'
+    rule = {
+        'default': '',
+        'rules_name': ['mount_point_rule'],
+        'backends': ['home___pre___intra'],
+        'init_rule': 'mount_point_rule',
+        'rules': {
+            'mount_point_rule': {
+                'type': 'mount',
+                'conditions': [
+                    {'condition': '/home/', 'backend': 'home___pre___intra'},
+                    {'condition': 'jump', 'backend': 'rule0'} # 哨兵位，方便实现代码
+                ]
+            },
+            'rule0': {}
+        }
+    }
+    ```
 
-```
-/__eru__/upstream
-GET : 取得ELB上所有的upstream
-DELETE : 删除某一组upstream
-PUT : 增加upstream
-```
+3. 域名存在一个 general rule , 需要变更为新的 general rule, 可以直接更新;
+
+4. 域名存在一个 general rule , 需要变更为 mount point rule;
+    ```
+    # citadel post 的数据
+    domain = 'www.elb3test.org/home'
+    rule = {
+        'default': 'home___pre___intra',
+        'rules_name': ['rule0'],
+        'backends':['home___pre___intra'],
+        'init_rule': 'rule0'
+        'rules': {
+            'rule0': {
+                'type': 'general',
+                'conditions': [
+                    {'backend': 'home___pre___intra'}
+                ]
+            }
+        }
+    }
+    # redis 中的数据
+    rule = {
+        'default': 'ysgge___pre___intra',
+        'rules_name': ['rule0'],
+        'backends':['ysgge___pre___intra'],
+        'init_rule': 'rule0'
+        'rules': {
+            'rule0': {
+                'type': 'general',
+                'conditions': [
+                    {'backend': 'ysgge___pre___intra'}
+                ]
+            }
+        }
+    }
+    # erulbpy 处理之后的数据
+    rule = {
+        'default': 'ysgge___pre___intra',
+        'rules_name': ['mount_point_rule','rule0'],
+        'backends':['home___pre___intra','ysgge___pre___intra'],
+        'init_rule': 'mount_point_rule'
+        'rules': {
+            'mount_point_rule': {
+                'type': 'mount',
+                'conditions': [
+                    {'condition': '/home/', 'backend': 'home___pre___intra'},
+                    {'condition': 'jump', 'backend': 'rule0'}
+                ]
+            },
+            'rule0': {
+                'type': 'general',
+                'conditions': [
+                    {'backend': 'ysgge___pre___intra'}
+                ]
+            }
+        }
+    }
+    ```
+
+5. 域名存在一个 mount point rule, 需要增加/替换 general rule;
+    ```
+    # citadel post 的数据
+    domain = 'www.elb3test.org'
+    rule = {
+        'default': 'ysgge2___pre___intra',
+        'rules_name': ['rule0'],
+        'backends':['ysgge2___pre___intra'],
+        'init_rule': 'rule0'
+        'rules': {
+            'rule0': {
+                'type': 'general',
+                'conditions': [
+                    {'backend': 'ysgge2___pre___intra'}
+                ]
+            }
+        }
+    }
+    # redis 中保存的数据, 这里其实要替换里面的 general 部分, 无论增加还是替换，都是可以的
+    rule = {
+        'default': 'ysgge___pre___intra',
+        'rules_name': ['mount_point_rule','rule0'],
+        'backends':['home___pre___intra','ysgge___pre___intra'],
+        'init_rule': 'mount_point_rule'
+        'rules': {
+            'mount_point_rule': {
+                'type': 'mount',
+                'conditions': [
+                    {'condition': '/home/', 'backend': 'home___pre___intra'},
+                    {'condition': 'jump', 'backend': 'rule0'}
+                ]
+            },
+            'rule0': {
+                'type': 'general',
+                'conditions': [
+                    {'backend': 'ysgge___pre___intra'}
+                ]
+            }
+        }
+    }
+    # erulbpy 处理自后的数据
+    rule = {
+        'default': 'ysgge___pre___intra2',
+        'rules_name': ['mount_point_rule','rule0'],
+        'backends':['home___pre___intra','ysgge2___pre___intra'],
+        'init_rule': 'mount_point_rule'
+        'rules': {
+            'mount_point_rule': {
+                'type': 'mount',
+                'conditions': [
+                    {'condition': '/home/', 'backend': 'home___pre___intra'},
+                    {'condition': 'jump', 'backend': 'rule0'}
+                ]
+            },
+            'rule0': {
+                'type': 'general',
+                'conditions': [
+                    {'backend': 'ysgge2___pre___intra'}
+                ]
+            }
+        }
+    }
+    ```
+
+6. 域名存在一个 mount point rule, 需要增加新的 mount point rule;
+    ```
+    # citadel post 的数据
+    domain = 'www.elb3test.org/product'
+    rule = {
+        'default': 'product___pre___intra',
+        'rules_name': ['rule0'],
+        'backends':['product___pre___intra'],
+        'init_rule': 'rule0'
+        'rules': {
+            'rule0': {
+                'type': 'general',
+                'conditions': [
+                    {'backend': 'product___pre___intra'}
+                ]
+            }
+        }
+    }
+    # redis 中保存的数据
+    rule = {
+        'default': 'ysgge___pre___intra',
+        'rules_name': ['mount_point_rule','rule0'],
+        'backends':['home___pre___intra','ysgge___pre___intra'],
+        'init_rule': 'mount_point_rule'
+        'rules': {
+            'mount_point_rule': {
+                'type': 'mount',
+                'conditions': [
+                    {'condition': '/home/', 'backend': 'home___pre___intra'},
+                    {'condition': 'jump', 'backend': 'rule0'}
+                ]
+            },
+            'rule0': {
+                'type': 'general',
+                'conditions': [
+                    {'backend': 'ysgge___pre___intra'}
+                ]
+            }
+        }
+    }
+    # erulbpy 处理之后的数据, general 部分不会改变
+    rule = {
+        'default': 'ysgge___pre___intra',
+        'rules_name': ['mount_point_rule','rule0'],
+        'backends':['home___pre___intra', 'product___pre___intra', 'ysgge___pre___intra'],
+        'init_rule': 'mount_point_rule'
+        'rules': {
+            'mount_point_rule': {
+                'type': 'mount',
+                'conditions': [
+                    {'condition': '/home/', 'backend': 'home___pre___intra'},
+                    {'condition': '/product/', 'backend': 'product___pre___intra'},
+                    {'condition': 'jump', 'backend': 'rule0'}
+                ]
+            },
+            'rule0': {
+                'type': 'general',
+                'conditions': [
+                    {'backend': 'ysgge___pre___intra'}
+                ]
+            }
+        }
+    }
+    ```
+
+删除 rule 的原则分为两种情况：
+
+1. 删除general rule: 删除对应的 general rule 部分
+2. 删除挂载点: 删除对应的 mount point
+
+每种情况 erulbpy 都会从 redis 中找到对应的记录，删掉对应的 backend, 如果对应的记录所有 backend 都删掉了, 则删掉对应的记录，否则更新记录.
+
+    ```
+    # 假设对应 www.elb3test.org 的记录如下
+    # redis 中保存的数据
+    rule = {
+        'default': 'ysgge___pre___intra',
+        'rules_name': ['mount_point_rule','rule0'],
+        'backends':['home___pre___intra','ysgge___pre___intra'],
+        'init_rule': 'mount_point_rule'
+        'rules': {
+            'mount_point_rule': {
+                'type': 'mount',
+                'conditions': [
+                    {'condition': '/home/', 'backend': 'home___pre___intra'},
+                    {'condition': 'jump', 'backend': 'rule0'}
+                ]
+            },
+            'rule0': {
+                'type': 'general',
+                'conditions': [
+                    {'backend': 'ysgge___pre___intra'}
+                ]
+            }
+        }
+    }
+
+    # init ELBClient
+    client = ELBClient(redis_url, elb_name)
+    # 删去对应 /home/ 的挂载点
+    client.delete_rule('www.elb3test.org/home')
+
+    # 删去之后 redis 保存的数据变成
+    rule = {
+        'default': 'ysgge___pre___intra',
+        'rules_name': ['rule0'],
+        'backends':['ysgge___pre___intra'],
+        'init_rule': 'rule0',
+        'rules': {
+            'rule0': {
+                'type': 'general',
+                'conditions': [
+                    {'backend': 'ysgge___pre___intra'}
+                ]
+            }
+        }
+
+    # 删去 general rule
+    client.delete_rule('www.elb3test.org')
+
+    #删除之后 www.elb3test.org 对应的 rule 没有
+    ```
+
+处理像示例里面 complex rule 的情况：这个目前只能手动了，还没有想好怎样处理，而且目前只有一个域名有这个需求。真的实现了，估计要内嵌一个 DSL .
+
+* erulbpy
+
+erulbpy 是对外服务的 erulb api。
