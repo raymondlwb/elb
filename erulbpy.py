@@ -95,7 +95,7 @@ class ELBClient(object):
                 'OPER': PubsubOperations.DELETE,
                 'KEY': key
             }
-            pipe.hdel(self._rule_index_key, domain)
+            pipe.hdel(self._rule_index_key, key)
             pipe.delete(key)
             pipe.publish(self._channel_key, json.dumps(msg))
 

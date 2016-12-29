@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='erulb_py',
-    version='0.0.1',
+    version='0.0.1a',
     author='timfeirg',
     zip_safe=True,
     author_email='timfeirg@icloud.com',
