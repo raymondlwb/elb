@@ -12,4 +12,7 @@ _M.UPDATE = '1'
 _M.DELETE = '0'
 _M.UPSTREAM_KEY = _M.NAME .. ':upstream'
 _M.CHANNEL_KEY = _M.NAME .. ':upstream_and_rule'
+
+_M.REDIS_RECONNECT_INTERVAL = 1
+_M.REDIS_RECONNECT_INTERVAL_UPPER = 20
 return _M
