@@ -21,12 +21,25 @@ RULE = {
     "rules": {
         "rule0": {
             "type": "general",
-            "conditions": [{"backend": "ysgge___release___release"}]
         }
     },
-    "backends": ["ysgge___release___release"],
     "init_rule": "rule0",
-    "default": "rule0"
+    "default": ""
+}
+
+complex_rule = {
+    u'type': 'complex',
+    u'backends': [u'eggsy___web___release', u'ysgge___release___release'],
+    u'default': u'eggsy___web___release',
+    u'init_rule': u'rule0',
+    u'rules': {u'rule0': {u'conditions': [{u'backend': u'eggsy___web___release',
+                                           u'condition': u'exhibit,order,trace,user,api,manger,invite,topic,coupon,pay,apple-app-site-association,app'},
+                                          {u'backend': u'rule1', u'condition': u'jump'}],
+                          u'type': u'path'},
+               u'rule1': {u'conditions': [{u'backend': u'ysgge___release___release',
+                                           u'condition': u'(iphone|android|blackberry|mobi)'}],
+                          u'type': u'ua'}},
+    u'rules_name': [u'rule0', u'rule1']
 }
 
 @click.group()
@@ -59,8 +72,12 @@ def pub_del_upstream(ctx, backend='ysgge___release___release'):
 
 @cli.command('pub:setrule')
 @click.argument('domain')
+@click.argument('backend')
 @click.pass_context
-def pub_set_rule(ctx, domain='www.elb3test.org'):
+def pub_set_rule(ctx, domain='www.elb3test.org', backend='general'):
+    RULE['rules']['rule0']['conditions'] = [{'backend': backend}]
+    RULE['backends'] = [backend]
+    RULE['default'] = backend
     ctx.obj['ELB'].set_rule(domain, RULE)
 
 
@@ -71,11 +88,11 @@ def pub_del_rule(ctx, domains='www.elb3test.org'):
     domains = [s.strip() for s in domains.split(',')]
     ctx.obj['ELB'].delete_rule(domains)
 
-@cli.command('check:redis')
+@cli.command('setcomplex')
+@click.argument('domain')
 @click.pass_context
-def check_upstream(ctx):
-    pass
-
+def set_complext(ctx, domain):
+    ctx.obj['ELB'].set_rule(domain, complex_rule)
 
 if __name__ == '__main__':
     cli(obj={})

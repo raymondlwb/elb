@@ -8,3 +8,5 @@ dump.rdb
 *.egg-info/
 src
 api/develop.lua
+build/*
+dist/*

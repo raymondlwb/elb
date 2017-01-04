@@ -85,7 +85,7 @@ function _M.get_rule()
         ngx.log(ngx.NOTICE, key)
         local tmp = rules:get(key)
         if tmp then
-            --res[key] = cjson.decode(tmp)
+            -- res[key] = cjson.decode(tmp)
             res[key] = tmp
         end
     end
