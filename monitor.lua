@@ -39,7 +39,7 @@ function _M.monitor()
     local mutex = lock:new('monitor', {timeout=0, exptime=3})
     local uplock, err = mutex:lock('api')
     if not uplock then
-        ngx.log(ngx.NOTICE, ' ELB start monitor in another worker ')
+        ngx.log(ngx.NOTICE, 'ELB start monitor in another worker')
         return
     end
     if err then
@@ -48,26 +48,36 @@ function _M.monitor()
     local rds = redis:new()
     local update = rds:subscribe(config.CHANNEL_KEY)
     if not update then
-        ngx.log(ngx.ERR, ' ELB start monitor failed ')
+        ngx.log(ngx.ERR, 'ELB start monitor failed')
         return
     end
     if err then
         ngx.log(ngx.ERR, err)
         return
     end
-    ngx.log(ngx.NOTICE, ' ELB start to monitor ')
+    ngx.log(ngx.NOTICE, 'ELB start to monitor')
 
     while true do
         if ngx.worker.exiting() then
-            ngx.log(ngx.NOTICE, ' api monitor exit ')
+            ngx.log(ngx.NOTICE, 'api monitor exit')
             break
         end
         local res, err = update()
+        local sleep_time = config.REDIS_RECONNECT_INTERVAL
         if err and err ~= 'timeout' then
             ngx.log(ngx.ERR, err)
             update = nil
             while not update do
-                update = rds:subscribe(channel)
+                ngx.log(ngx.ERR, 'Try to reconnect redis')
+                ngx.sleep(sleep_time)
+                if sleep_time < config.REDIS_RECONNECT_INTERVAL_UPPER then
+                    sleep_time = sleep_time * 2
+                end
+                rds = redis:new()
+                update, err = rds:subscribe(config.CHANNEL_KEY)
+                if err then
+                    ngx.log(ngx.ERR, 'Try to resubscribe: '..err)
+                end
             end
         end
 
