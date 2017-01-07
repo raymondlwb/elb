@@ -2,6 +2,7 @@
 
 import logging
 import json
+import requests
 
 from redis import Redis
 from ruledata import UpdateRule
@@ -27,6 +28,38 @@ class ELBClient(object):
         self._rule_index_key = '{}:rules'.format(name)
         self.redis_url = redis_url
         self.rds = Redis.from_url(redis_url)
+        self.rule_key = '{}:rules'.format(name)
+        self.upstream_key = '{}:upstream'.format(name)
+
+    def dump_redis(self, elb_urls):
+        if not isinstance(elb_urls, list):
+            elb_urls = [elb_urls]
+
+        pipe = self.rds.pipeline()
+        for elb in elb_urls:
+            upstreams = requests.get(elb+'/__erulb__/upstream').json()
+            rules = requests.get(elb+'/__erulb__/rule').json()
+
+            for key in rules:
+                pipe.set(key, rules[key])
+                pipe.hset(self.rule_key, key, key.split(':')[1])
+
+            for key in upstreams:
+                data = upstreams[key]
+                ips = [s['addr'] for s in data]
+                servers = ['server {};'.format(ip) for ip in ips]
+                value = '\n'.join(servers)
+                pipe.hset(self.upstream_key, key, value)
+
+        pipe.execute()
+
+    def reload(self, elb_urls):
+        if not isinstance(elb_urls, list):
+            elb_urls = [elb_urls]
+
+        for elb in elb_urls:
+            requests.put(elb+'/__erulb__/upstream')
+            requests.put(elb+'/__erulb__/rule')
 
     def set_upstream(self, backend, servers):
         """
