@@ -2,7 +2,8 @@
 
 import urlparse
 import json
-from redis import Redis
+import requests
+from redis import Redis, ConnectionError
 
 MOUNT_POINT_RULE = 'mount_point_rule'
 RULE0 = 'rule0'
@@ -126,9 +127,9 @@ class RuleData(object):
 RULE_TEMPLATE = {
     'default': '',
     'rules_name': [],
-    'backends':[],
+    'backends': [],
     'init_rule': '',
-    'rules':{}
+    'rules': {}
 }
 
 
@@ -138,30 +139,43 @@ class UpdateRule(object):
     MOUNT_POINT_RULE_EXISTS = 1
     GENERAL_RULE_EXISTS = 2
 
-    def __init__(self, url, rule, redis_url, name):
+    def __init__(self, url, rule, redis_url, name, elb_instance_url):
         """
         url: 形如 www.elb3test.org 或 www.elb3test.org/path/xxx ;
         rule: citedal 传过来的 rule , del backend 的时候 rule 为 None ;
         redis_url: 因为需要查对应的域名是否有记录，所以需要查 redis ;
         name: the name of elb cluster
         """
-        parsed_url = urlparse.urlparse('//'+url.strip('/'), scheme='')
+        parsed_url = urlparse.urlparse('//' + url.strip('/'), scheme='')
         self.domain = parsed_url.netloc
-        self.path = parsed_url.path+'/' if parsed_url.path else None
+        self.path = parsed_url.path + '/' if parsed_url.path else None
         self.rule_to_update = rule
         self.rds = Redis.from_url(redis_url)
         self.key = '{}:{}'.format(name, self.domain)
-        self.rds_rule = None
-        self.status = self._check_rule_record()
-        self._check_rule_record()
+        self.rule_online = None
+        rule_api = elb_instance_url + '/__erulb__/rule'
+        self.status = self._check_rule_record(rule_api)
 
-    def _check_rule_record(self):
-        res = self.rds.get(self.key)
+    def _get_rule_data_online(self, api, key):
+        data = requests.get(api).json()
+        return data[key] if key in data else None
+
+    def _check_rule_record(self, api):
+        """
+        检查是否存在对应 self.key 的数据，若存在，
+        判断这个 rule 是否有挂载点.
+        如果 redis 不可用，就用 elb 接口上的数据，
+        """
+        try:
+            res = self.rds.get(self.key)
+        except ConnectionError:
+            res = self._get_rule_data_online(api, self.key)
+
         if not res:
             return self.RULE_NOT_EXISTS
 
-        self.rds_rule = json.loads(res)
-        if MOUNT_POINT_RULE in self.rds_rule['rules_name']:
+        self.rule_online = json.loads(res)
+        if MOUNT_POINT_RULE in self.rule_online['rules_name']:
             return self.MOUNT_POINT_RULE_EXISTS
 
         return self.GENERAL_RULE_EXISTS
@@ -187,13 +201,13 @@ class UpdateRule(object):
 
         # 情况4,6: 域名已经存在对应的 rule, 要增加 mount point
         if self.path and self.status != self.RULE_NOT_EXISTS:
-            rule_data = RuleData(self.rds_rule)
+            rule_data = RuleData(self.rule_online)
             return self.domain, rule_data.add_mount_point(self.path,
                                                           self.rule_to_update['default'])
 
         # 情况5, 域名存在 mount point，要 update rule0
         if not self.path and self.status == self.MOUNT_POINT_RULE_EXISTS:
-            rule_data = RuleData(self.rds_rule)
+            rule_data = RuleData(self.rule_online)
             return self.domain, rule_data.set_general_rule(self.rule_to_update['default'])
 
     def del_backend(self):
@@ -205,10 +219,10 @@ class UpdateRule(object):
         if self.status == self.RULE_NOT_EXISTS:
             return self.domain, None
 
-        if 'type' in self.rds_rule and self.rds_rule['type'] == 'complex':
+        if 'type' in self.rule_online and self.rule_online['type'] == 'complex':
             return self.domain, None
 
-        rule_data = RuleData(self.rds_rule)
+        rule_data = RuleData(self.rule_online)
         if self.path:
             return self.domain, rule_data.del_mount_point(self.path)
 
