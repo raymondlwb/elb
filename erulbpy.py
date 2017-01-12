@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
-
-import logging
 import json
-import requests
+import logging
 
+import requests
 from redis import Redis
+
 from ruledata import UpdateRule
+
 
 logger = logging.getLogger('erulbpy')
 
@@ -95,7 +96,7 @@ class ELBClient(object):
     def get_rule(self, domain):
         key = '{}:{}'.format(self.name, domain)
         rule_text = self.rds.get(key)
-        return json.loads(rule_text)
+        return rule_text and json.loads(rule_text)
 
     def set_rule(self, url, rule):
         """
