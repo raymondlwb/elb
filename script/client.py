@@ -9,6 +9,7 @@ from redis import Redis
 from erulbpy import ELBClient
 
 ELBNAME = os.getenv('ELBNAME', 'ELB')
+
 REDIS_HOST = os.getenv('REDIS_HOST', '127.0.0.1:6379')
 ELB_URL = os.getenv('ELB_URL', 'http://127.0.0.1')
 UPSTREAM_API = '/__erulb__/upstream'

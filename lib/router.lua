@@ -82,7 +82,6 @@ function _M.get_rule()
     local res = {}
     local rule_records = rules:get_keys(0)
     for _, key in ipairs(rule_records) do
-        ngx.log(ngx.NOTICE, key)
         local tmp = rules:get(key)
         if tmp then
             -- res[key] = cjson.decode(tmp)
