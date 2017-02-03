@@ -2,16 +2,10 @@ appname: "erulb3"
 entrypoints:
   release-host:
     privileged: true
-    cmd: "/erulb3/start.sh"
-    ports:
-      - "80/tcp"
-    network_mode: "host"
-  beta-host:
-    privileged: true
-    cmd: "ERU_INFO=elb3_beta nginx -p /erulb3/server -c /erulb3/conf/dev.conf"
+    cmd: "/home/erulb3/start.sh"
     ports:
       - "80/tcp"
     network_mode: "host"
 build:
-  - "mkdir -p /erulb3/server/logs"
+  - "mkdir -p /home/erulb3/server/logs"
 base: "hub.ricebook.net/base/alpine:openresty-2016.12.02"
