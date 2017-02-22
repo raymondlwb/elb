@@ -39,5 +39,3 @@ if ngx.var.backend == '' then
     ngx.log(ngx.ERR, 'invalid domain: ', ngx.var.host)
     return
 end
-
-ngx.log(ngx.INFO, 'ERU_INFO:'..config.ERU_INFO)
