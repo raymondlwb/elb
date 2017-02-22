@@ -1,10 +1,12 @@
 local config = require 'config'
 
 local cost = 0
-for token in string.gmatch(ngx.var.upstream_response_time, '[^,]+') do
-    local time = tonumber(token)
-    if time then
-        cost = cost + time
+if ngx.var.upstream_response_time then
+    for token in string.gmatch(ngx.var.upstream_response_time, '[^,]+') do
+        local time = tonumber(token)
+        if time then
+            cost = cost + time
+        end
     end
 end
 
