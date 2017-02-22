@@ -1,5 +1,5 @@
 server
-test.lua
+test*
 *_temp/*
 logs
 dump.rdb

@@ -1,4 +1,5 @@
 appname: "erulb3"
+subscribers: "#inferno"
 entrypoints:
   release-host:
     privileged: true
@@ -6,6 +7,10 @@ entrypoints:
     ports:
       - "80/tcp"
     network_mode: "host"
+
 build:
   - "mkdir -p /home/erulb3/server/logs"
+pemitted_users:
+  - "zhangye"
+
 base: "hub.ricebook.net/base/alpine:openresty-2016.12.02"
