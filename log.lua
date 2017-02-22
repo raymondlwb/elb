@@ -16,7 +16,10 @@ local statsd_cost = string.format(config.STATSD_FORMAT, statsd_host, 'cost')
 local statsd_total = string.format(config.STATSD_FORMAT, statsd_host, 'total')
 
 statsd.count(statsd_total, 1)
-statsd.count(statsd_status..'.'..ngx.var.upstream_status, 1)
+if ngx.var.upstream_status ~= '-' then
+    statsd.count(statsd_status..'.'..ngx.var.upstream_status, 1)
+end
+
 if cost then
     statsd.time(statsd_cost, cost*1000) -- 毫秒
 end
@@ -34,3 +37,5 @@ if ngx.var.backend == '' then
     ngx.log(ngx.ERR, 'invalid domain: ', ngx.var.host)
     return
 end
+
+ngx.log(ngx.INFO, 'ERU_INFO:'..config.ERU_INFO)
