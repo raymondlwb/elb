@@ -15,6 +15,4 @@ _M.CHANNEL_KEY = _M.NAME .. ':upstream_and_rule'
 
 _M.REDIS_RECONNECT_INTERVAL = 1
 _M.REDIS_RECONNECT_INTERVAL_UPPER = 20
-
-_M.ERU_INFO = os.getenv("ERU_INFO") or 'elb3'
 return _M
