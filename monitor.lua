@@ -89,6 +89,7 @@ function _M.monitor()
             if err then ngx.log(ngx.ERR, err) end
         end
     end
+    mutex:unlock()
 end
 
 return _M

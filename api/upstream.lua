@@ -12,6 +12,7 @@ local function reload()
         utils.say_msg_and_exit(ngx.HTTP_INTERNAL_SERVER_ERROR, err)
     end
     router.load_upstream()
+    mutex:unlock()
     utils.say_msg_and_exit(ngx.HTTP_OK, 'ok')
 end
 
