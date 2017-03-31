@@ -20,7 +20,6 @@ function _M.process(conditions)
         end
         if sub_time>0 then
             ngx.req.set_uri(uri)
-            ngx.log(ngx.STDERR, conditions[i]['backend'])
             return conditions[i]['backend']
         end
 

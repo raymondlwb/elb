@@ -11,6 +11,7 @@ local rule_index_key = config.NAME .. ':rules'
 local channel_key = config.CHANNEL_KEY
 
 function _M.add_upstream(backend, servers)
+    ngx.log(ngx.INFO, 'add_upstream: '..backend..', servers:'..servers)
     local status, err = dyups.update(backend, servers)
     if status ~= ngx.HTTP_OK then
         return err
@@ -18,6 +19,7 @@ function _M.add_upstream(backend, servers)
 end
 
 function _M.delete_upstream(backend)
+    ngx.log(ngx.INFO, 'delete_upstream: '..backend)
     local status, err = dyups.delete(backend)
     if status ~= ngx.HTTP_OK then
         return err
@@ -53,6 +55,7 @@ function _M.load_upstream()
 end
 
 function _M.add_rule(key, rule)
+    ngx.log(ngx.INFO, 'add_rule: '..key..', rule: '..rule)
     local mutex = lock:new('rules', {timeout=0, exptime=3})
     local rlock, err = mutex:lock('add'..key)
     if not rlock then
@@ -66,6 +69,7 @@ function _M.add_rule(key, rule)
 end
 
 function _M.delete_rule(key)
+    ngx.log(ngx.INFO, 'delete_rule: '..key)
     local mutex = lock:new('rules', {timeout=0, exptime=3})
     local rlock, err = mutex:lock('delete'..key)
     if not rlock then
