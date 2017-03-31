@@ -12,6 +12,7 @@ local utils = require 'utils'
 local _M = {}
 
 function update_upstream(data)
+    ngx.log(ngx.NOTICE, 'update_upstream')
     if data['OPER'] == config.UPDATE then
         return router.add_upstream(data['BACKEND'], data['SERVERS'])
     end
@@ -21,6 +22,7 @@ function update_upstream(data)
 end
 
 function update_rule(data)
+    ngx.log(ngx.NOTICE, 'update_rule')
     if data['OPER'] == config.UPDATE then
         -- router.add_rule 里面加锁了
         return router.add_rule(data['KEY'], data['RULE'])

@@ -18,7 +18,7 @@ local statsd_cost = string.format(config.STATSD_FORMAT, statsd_host, 'cost')
 local statsd_total = string.format(config.STATSD_FORMAT, statsd_host, 'total')
 
 statsd.count(statsd_total, 1)
-if ngx.var.upstream_status ~= '-' then
+if ngx.var.upstream_status and ngx.var.upstream_status ~= '-' then
     statsd.count(statsd_status..'.'..ngx.var.upstream_status, 1)
 end
 
