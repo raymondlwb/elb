@@ -59,7 +59,7 @@ function _M.monitor()
 
     while true do
         if ngx.worker.exiting() then
-            ngx.log(ngx.NOTICE, 'api monitor exit')
+            ngx.log(ngx.NOTICE, 'API monitor exit')
             break
         end
         local res, err = update()
