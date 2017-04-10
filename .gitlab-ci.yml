@@ -1,9 +1,9 @@
 image: "hub.ricebook.net/base/alpine:openresty-2016.12.02"
 variables:
-    CITADEL_AUTH_TOKEN: "D73YeuAMzZSkoDY4FAEGRAmMKMY0Rpfv06FQEbygtEkB6TrXceeWrWcqKWAMNekL"
+    CITADEL_AUTH_TOKEN: $CITADEL_AUTH_TOKEN
     CITADEL_URL: "http://citadel.ricebook.net"
-    MIMIRON_URL: "http://mimiron.ricebook.net"
     SSO_URL: "http://sso.ricebook.net"
+    MIMIRON_URL: "http://mimiron.ricebook.net"
 stages:
     - "build"
 build_job:
