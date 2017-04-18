@@ -22,7 +22,7 @@ function _M.process(conditions)
             return conditions[i]['backend']
         end
         if key == 'jump' then
-            return condition[i]['backend']
+            return conditions[i]['backend']
         end
     end
     return nil
