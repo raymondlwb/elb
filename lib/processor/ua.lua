@@ -21,6 +21,9 @@ function _M.process(conditions)
         if captured ~= nil then
             return conditions[i]['backend']
         end
+        if key == 'jump' then
+            return condition[i]['backend']
+        end
     end
     return nil
 end
