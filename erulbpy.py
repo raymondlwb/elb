@@ -3,16 +3,20 @@ import json
 import logging
 
 import requests
-from urlparse import urlparse
 from redis import Redis, ConnectionError
+from six import string_types
+from six.moves.urllib_parse import urlparse
+
 from ruledata import UpdateRule
 
 
 logger = logging.getLogger('erulbpy')
 
+
 class ApiResult(object):
     SUCCESS = True
     FAIL = False
+
 
 class PubsubOperations(object):
     UPDATE = '1'
@@ -37,10 +41,10 @@ class ELBClient(object):
         self.upstream_key = '{}:upstream'.format(name)
         self.rds_alive = True
 
-        if isinstance(elb_urls, basestring):
+        if isinstance(elb_urls, string_types):
             elb_urls = [elb_urls]
 
-        self.elb_urls = ['http://'+s if not urlparse(s).scheme else s for s in elb_urls]
+        self.elb_urls = ['http://' + s if not urlparse(s).scheme else s for s in elb_urls]
 
     def dump_redis(self, elb_urls):
         """
@@ -50,7 +54,7 @@ class ELBClient(object):
         back to redis. Usually, dump data of one elb is enough.
         Let citadel choose which one to dump.
         """
-        if isinstance(elb_urls, basestring):
+        if isinstance(elb_urls, string_types):
             elb_urls = [elb_urls]
 
         pipe = self.rds.pipeline()
@@ -82,7 +86,7 @@ class ELBClient(object):
         use this api to reload, citadel should decide which elb
         to reload.
         """
-        if not isinstance(elb_urls, basestring):
+        if not isinstance(elb_urls, string_types):
             elb_urls = [elb_urls]
 
         for elb in elb_urls:
@@ -270,7 +274,7 @@ class ELBClient(object):
         """
         domains -- list of domain
         """
-        if isinstance(domains, basestring):
+        if isinstance(domains, str):
             domains = domains,
 
         logger.debug('Delete ELB %s rule: %s', self.name, domains)

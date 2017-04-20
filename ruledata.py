@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
-
-import urlparse
 import json
+
 import requests
 from redis import Redis, ConnectionError
+from six.moves.urllib_parse import urlparse
+
 
 MOUNT_POINT_RULE = 'mount_point_rule'
 RULE0 = 'rule0'
@@ -146,7 +147,7 @@ class UpdateRule(object):
         redis_url: 因为需要查对应的域名是否有记录，所以需要查 redis ;
         name: the name of elb cluster
         """
-        parsed_url = urlparse.urlparse('//' + url.strip('/'), scheme='')
+        parsed_url = urlparse('//' + url.strip('/'), scheme='')
         self.domain = parsed_url.netloc
         self.path = parsed_url.path + '/' if parsed_url.path else None
         self.rule_to_update = rule

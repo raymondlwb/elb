@@ -21,5 +21,5 @@ for key in upstreams:
     ips = [s['addr'] for s in data]
     servers = ['server {};'.format(ip) for ip in ips]
     value = '\n'.join(servers)
-    print UPSTREAM_KEY, key, value
+    print(UPSTREAM_KEY, key, value)
     client.hset(UPSTREAM_KEY, key, value)
