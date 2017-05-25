@@ -46,7 +46,7 @@ def check_upstream(ctx):
         if redis_res:
             redis_servers = set([x.strip(';') for x in redis_res.replace('server ', '').split('\n')])
         else:
-            print backend
+            print(backend)
         if api_servers != redis_servers:
             click.echo('{}: not consist!'.format(backend))
             click.echo('api_servers: {}'.format(api_servers))
