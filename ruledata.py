@@ -68,6 +68,13 @@ class RuleData(object):
             s for s in self.rule['rules'][MOUNT_POINT_RULE]['conditions']
             if s['condition'] != path]
 
+    def _check_backend_with_same_name(self, backend):
+        for _, rule in self.rule['rules'].items():
+            for condition in rule['conditions']:
+                if backend == condition['backend']:
+                    return True
+        return False
+
     def _get_mount_backend(self, path):
         return [s['backend'] for s in self.rule['rules'][MOUNT_POINT_RULE]['conditions']
                 if s['condition'] == path]
@@ -111,15 +118,19 @@ class RuleData(object):
         if not backend:
             return self.rule
 
-        self.rule['backends'].remove(backend[0])
-        if not self.rule['backends']:
-            return None
-
         self._del_mount_condition(path)
         if len(self.rule['rules'][MOUNT_POINT_RULE]['conditions']) == 1:
             self.rule['rules_name'].remove(MOUNT_POINT_RULE)
             self.rule['rules'].pop(MOUNT_POINT_RULE)
             self.rule['init_rule'] = 'rule0'
+
+        # 一种糟糕的情况是不同的 mount-point 挂了同样的 backend
+        # 所以需要检查有没有别的 rule 里面有 condition 对应这个 backend
+        if not self._check_backend_with_same_name(backend[0]):
+            self.rule['backends'].remove(backend[0])
+
+        if not self.rule['backends']:
+            return None
 
         return self.rule
 
