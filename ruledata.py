@@ -128,7 +128,10 @@ class RuleData(object):
         # 一种糟糕的情况是不同的 mount-point 挂了同样的 backend
         # 所以需要检查有没有别的 rule 里面有 condition 对应这个 backend
         if not self._check_backend_with_same_name(backend[0]):
-            self.rule['backends'].remove(backend[0])
+            try:
+                self.rule['backends'].remove(backend[0])
+            except ValueError:
+                pass # 没脾气了，出现了数据错误，先这样救急吧
 
         if not self.rule['backends']:
             return None
