@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
-import json
+import anyjson as json
 import logging
-
 import requests
 from redis import Redis, ConnectionError
 from six import string_types
