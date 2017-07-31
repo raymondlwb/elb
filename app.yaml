@@ -10,7 +10,7 @@ entrypoints:
 
 build:
   - "mkdir -p /home/erulb3/server/logs"
-pemitted_users:
+permitted_users:
   - "zhangye"
 
 base: "hub.ricebook.net/base/alpine:openresty-2016.12.02"
