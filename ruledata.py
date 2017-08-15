@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-import anyjson as json
+import json
+
 import requests
 from redis import Redis, ConnectionError
 from six.moves.urllib_parse import urlparse
