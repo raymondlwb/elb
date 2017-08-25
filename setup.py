@@ -8,7 +8,7 @@ setup(
     zip_safe=True,
     author_email='timfeirg@icloud.com',
     description='ELB 3 python client',
-    py_modules=['erulbpy', 'ruledata'],
+    py_modules=['erulb'],
     install_requires=[
         'redis',
         'requests',

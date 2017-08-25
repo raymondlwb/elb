@@ -1,0 +1,3 @@
+# /bin/sh
+
+adduser -u $2 -h /dev/null -s /sbin/nologin -D $8
